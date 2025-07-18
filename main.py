@@ -26,9 +26,34 @@ class Main(ctk.CTk):
         self.resizable(True, True) #redimensionamiento
         self.configure(bg="#f8f9fa") #fondo gris claro
 
-        estilo = ttk.Style()
-        estilo.theme_use("clam")
-        estilo.configure("My.TFrame", background = "white")
+        # definición de estilos de los widgets
+        self.style = ttk.Style() #objeto estilo
+        self.style.theme_use("clam") #tema
+        
+        #colores de botones 
+        self.style.configure("TButton", #"themed button"
+                             foreground = "white", #texto blanco
+                             background = "#c0392b", #fondo rojo
+                             font = ("Arial", 12, "bold"), #arial tamaño 12 en negrita
+                             padding = (20,10)) #padding horizontal de 20, y vertical de 10
+
+        #configuración de los estados del boton (hover y presionado)
+        self.style.map("TButton", #establece estilo dinámico (para cada estado del botón)
+                       background = [("active", "#e74c3c"), ("pressed", "#a93226")], #colores para hover (active) y para presionado (pressed)
+                       foreground = [("active", "#fff")]) #color del texto en hover
+        
+        #encabezados de las tablas
+        self.style.configure("Treeview.Heading", #este selecciona los encabezados
+                             background = "#c0392b", #fondo rojo
+                             foreground = "white", #letra blanca
+                             font = ("Arial", 11, "bold")) #arial tamaño 11 negrita
+
+        #filas de las tablas
+        self.style.configure("Treeview", #este selecciona las filas
+                             background = "#fff", #fondo de las filas
+                             fieldbackground = "#fff", #fondo de la tabla completa (incluyendo las filas vacías)
+                             font = ("Arial", 10), #arial tamaño 10
+                             rowheight = 30) #altura de 30px para las filas
 
         # frame para los botones de los distintos módulos
         self.principal = ttk.Frame(self, 
