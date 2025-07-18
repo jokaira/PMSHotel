@@ -1,20 +1,30 @@
-import tkinter as tk
+# librerias de interfaz grafica
+import customtkinter as ctk
 from tkinter import ttk
+
+#librerias y modulos de funcionamiento del sistema
 import sqlite3 as sql
 from gestor_clientes import GestorClientes #modulo de clientes
 from Main_Habitaciones import * #modulo de habitaciones
 from Calendario_de_Reserva import * #modulo de reservas
 
+# configuracion del modo de apariencia y tema de colores
+ctk.set_appearance_mode("light") #modo claro
+ctk.set_default_color_theme("blue") #tema azul
 
-res_ventana = {"x": 1024, "y": 768} #variable de la resolución de la ventana principal
+res_ventana = {"x": 1200, "y": 800} #variable de la resolución de la ventana principal
 
 
-class Main(tk.Tk):
+class Main(ctk.CTk):
+    #clase principal que representa la ventana principal
     def __init__(self):
-        super().__init__()
-        self.title("PMS Hotel")
-        self.geometry(f"{res_ventana['x']}x{res_ventana['y']}")
-        self.resizable(False, False)
+        super().__init__() #constructor
+
+        #config basica de la ventana
+        self.title("PMS Hotel - Sistema de Gestión Hotelera") #titulo
+        self.geometry(f"{res_ventana['x']}x{res_ventana['y']}") #tamaño de ventana
+        self.resizable(True, True) #redimensionamiento
+        self.configure(bg="#f8f9fa") #fondo gris claro
 
         estilo = ttk.Style()
         estilo.theme_use("clam")
