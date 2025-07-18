@@ -71,7 +71,14 @@ class Main(ctk.CTk):
         #barra de navegacion lateral
         self.create_sidebar() #metodo para crear la barra lateral
 
-        ###############################################################################################################
+        #frame para el contenido principal
+        self.main_content = ctk.CTkFrame(self.content_frame, fg_color = "#fff", corner_radius = 15)
+        self.main_content.pack(side = "left", fill = "both", expand = True, padx = (20, 0))
+
+        #inicialización de módulos
+        self.clientes = None #modulo de clientes
+        self.habitaciones = None #modulo de habitaciones
+        self.reservas = None #modulo de reservas
     
     def create_header(self):
         #crea encabezado con titulo y el branding, logo e info de la "empresa"
