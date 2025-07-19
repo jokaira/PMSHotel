@@ -79,6 +79,10 @@ class Main(ctk.CTk):
         self.clientes = None #modulo de clientes
         self.habitaciones = None #modulo de habitaciones
         self.reservas = None #modulo de reservas
+        #TODO: agregar mas modulos
+
+        #esto muestra el dashboard por defecto
+        self.show_dashboard() #metodo para mostrar el dashboard
     
     def create_header(self):
         #crea encabezado con titulo y el branding, logo e info de la "empresa"
@@ -149,6 +153,128 @@ class Main(ctk.CTk):
         spacer = ctk.CTkFrame(sidebar_frame, fg_color = "transparent", height = 50)
         spacer.pack(fill = "x", pady = 20)
     
+    def clear_main_content(self):
+        #limpia el frame de contenido principal
+        #elimina todos los widgets
+        for widget in self.main_content.winfo_children(): #este metodo devuelve una lista con todos los widgets que estén dentro de ese contenedor
+            widget.destroy()
+
+    def show_dashboard(self):
+        #muestra el dashboard con estadisticas, tarjetas y botones de accion rápida
+
+        self.clear_main_content() #limpia el frame del contenido principal
+
+        #frame del dashboard
+        dashboard_frame = ctk.CTkFrame(self.main_content, fg_color = "transparent")
+        dashboard_frame.pack(fill = "both", expand = True, padx = 30, pady = 30)
+
+        #mensaje de bienvenida
+        welcome_label = ctk.CTkLabel(dashboard_frame,
+                                     text = "¡Bienvenido al Sistema de Gestión Hotelera!",
+                                     font = ("Arial", 24, "bold"),
+                                     text_color = "#2c3e50")
+        welcome_label.pack(pady = (0, 20))
+
+        #frame para las tarjetas de estadisticas
+        stats_frame = ctk.CTkFrame(dashboard_frame)
+        stats_frame.pack(fill = "x", pady = 20)
+
+        #tarjetas de las estadisticas
+        self.create_stat_card(stats_frame, "👥 Clientes", 
+                              "150",#TODO: por el momento no tendrá un cálculo
+                              "#3498db", 0)
+        self.create_stat_card(stats_frame, "🏠 Habitaciones", 
+                              "45",
+                              "#e74c3c", 1)
+        self.create_stat_card(stats_frame, "📅 Reservas Activas", 
+                              "23",
+                              "#2ecc71", 2)
+        self.create_stat_card(stats_frame, "💰 Ingresos del Mes", 
+                              "$15,420",
+                              "#f39c12", 3)
+        
+        #frame para acciones rápidas
+        actions_frame = ctk.CTkFrame(dashboard_frame, fg_color = "transparent")
+        actions_frame.pack(fill = "x", pady = 30)
+
+        # creacion de titulo de acciones rapidas
+        actions_label = ctk.CTkLabel(
+            actions_frame,
+            text = "Acciones Rápidas",
+            font = ("Arial", 18, "bold"),
+            text_color = "#2c3e50"
+        )
+        actions_label.pack(pady = (0, 20))
+
+        #frame para botones de accion rápida
+        quick_actions = ctk.CTkFrame(actions_frame, fg_color = "transparent")
+        quick_actions.pack(fill = "x")
+
+        #definicion de estilo de los botones
+        quick_btn_style = {
+            "fg_color": "#c0392b",
+            "text_color": "white",
+            "font": ("Arial", 12, "bold"),
+            "corner_radius": 10,
+            "height": 40,
+            "hover_color": "#e74c3c"
+        }
+
+        #boton para agregar nuevo cliente
+        ctk.CTkButton(
+            quick_actions,
+            text = "➕ Nuevo Cliente",
+            command = self.abrir_gestor_clientes, #TODO: hay que crear o modificar funciones que directamente te lleve al gestor y abra el toplevel
+            **quick_btn_style
+        ).pack(side = "left", padx = (0, 10))
+
+        #boton para agregar nueva habitacion
+        ctk.CTkButton(
+            quick_actions,
+            text = "🏠 Nueva Habitación",
+            command = self.abrir_gestor_habitaciones, 
+            **quick_btn_style
+        ).pack(side = "left", padx = (0, 10))
+
+        #boton para agregar nueva reserva
+        ctk.CTkButton(
+            quick_actions,
+            text = "📅 Nueva Reserva",
+            command = self.abrir_gestor_reservas, #aqui el TODO no aplica
+            **quick_btn_style
+        ).pack(side = "left")
+
+    def create_stat_card(self, master, titulo, valor, color, columna):
+        #crea tarjeta de estadísticas
+        #argumentos:
+            # master: el que contendrá la tarjeta
+            # titulo: el titulo de la estadistica
+            # valor: el numero a mostrar
+            # color: el color de la tarjeta
+            # columna: el numero de la columna, por el momento no se usa
+        
+        #frame de cada tarjeta
+        card = ctk.CTkFrame(master, fg_color = color, corner_radius = 15, height = 120)
+        card.pack(side = "left", fill = "both", expand = True, padx = (0, 10))
+
+        #titulo de la tarjeta
+        title_label = ctk.CTkLabel(
+            card,
+            text = titulo,
+            font = ("Arial", 14, "bold"),
+            text_color = "white"
+        )
+        title_label.pack(pady = (20, 5))
+
+        #valor de la estadistica
+        value_label = ctk.CTkLabel(
+            card,
+            text = valor,
+            font = ("Arial", 24, "bold"),
+            text_color = "white"
+        )
+        value_label.pack()
+
     def abrir_gestor_clientes(self):
         self.principal.place_forget()
         self.clientes.place(relx=0.5, rely=0.5, anchor="center")
