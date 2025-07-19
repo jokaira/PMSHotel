@@ -2,8 +2,7 @@
 import customtkinter as ctk
 from tkinter import ttk
 
-#librerias y modulos de funcionamiento del sistema
-import sqlite3 as sql
+#modulos de funcionamiento del sistema
 from gestor_clientes import GestorClientes #modulo de clientes
 from Main_Habitaciones import * #modulo de habitaciones
 from Calendario_de_Reserva import * #modulo de reservas
