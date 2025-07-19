@@ -90,7 +90,7 @@ class GestorClientes(ctk.CTkFrame):
 
         #tabla (treeview)
         columns = ("Nombres", "Apellidos", "Documento", "Nro. Doc", "Cumpleaños", "Género", "Nacionalidad", "Teléfono", "E-mail")
-        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height = 15)
+        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height = 2)
 
         #bucle para configurar columnas de la tabla
         i = 0 #variable pal bucle
