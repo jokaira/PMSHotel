@@ -176,7 +176,7 @@ class Main(ctk.CTk):
         welcome_label.pack(pady = (0, 20))
 
         #frame para las tarjetas de estadisticas
-        stats_frame = ctk.CTkFrame(dashboard_frame)
+        stats_frame = ctk.CTkFrame(dashboard_frame, fg_color= "transparent")
         stats_frame.pack(fill = "x", pady = 20)
 
         #tarjetas de las estadisticas
