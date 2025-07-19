@@ -276,29 +276,38 @@ class Main(ctk.CTk):
         value_label.pack()
 
     def abrir_gestor_clientes(self):
-        self.principal.place_forget()
-        self.clientes.place(relx=0.5, rely=0.5, anchor="center")
+        #abre y muestra el modulo de gestión de clientes
+        self.clear_main_content()
+        self.clientes = GestorClientes(self.main_content)
+        self.clientes.pack(fill = "both", expand = True, padx = 20, pady = 20)
 
     def atras_clientes(self): #esto es para cuando se le da a atras desde el gestor de clientes
-        self.clientes.place_forget()
-        self.principal.place(relx=0.5, rely=0.5, anchor="center")
+        if self.clientes:
+            self.clientes.pack_forget()
+        self.show_dashboard()
 
     def abrir_gestor_habitaciones(self):
-        self.principal.place_forget()
-        self.habitaciones.place(relx=0.5, rely=0.5, anchor="center")
+        #abre y muestra el modulo de habitaciones
+        self.clear_main_content()
+        self.habitaciones = GestionDeHabitacionesApp(self.main_content)
+        self.habitaciones.pack(fill = "both", expand = True, padx = 20, pady = 20)
     
     def atras_habitaciones(self): #esto es pa cuando se le da a atras desde el gestor de habitaciones
-        self.habitaciones.place_forget()
-        self.principal.place(relx=0.5, rely=0.5, anchor="center")
+        if self.habitaciones:
+            self.habitaciones.pack_forget()
+        self.show_dashboard()
     
     def abrir_gestor_reservas(self):
-        self.principal.place_forget()
-        self.reservas.place(relx=0.5, rely=0.5, relwidth=1.0, relheight=1.0, anchor="center")
+        #abre el modulo de reservas
+        self.clear_main_content()
+        self.reservas = CalendarioReservasApp(self.main_content)
+        self.reservas.pack(fill = "both", expand = True, padx = 20, pady = 20)
         self.reservas.setup_ui()
     
     def atras_reservas(self): #esto es pa cuando se le da a atras desde el gestor de reservas
-        self.reservas.place_forget()
-        self.principal.place(relx=0.5, rely=0.5, anchor="center")
+        if self.reservas:
+            self.reservas.pack_forget()
+        self.show_dashboard()
 
 
 if __name__ == "__main__":
