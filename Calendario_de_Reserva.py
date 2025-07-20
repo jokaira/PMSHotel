@@ -4,8 +4,585 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from tkcalendar import DateEntry
 from gestor_clientes import GestorClientes
+import customtkinter as ctk
 
-###EN PROCESO DE INTEGRACION
+class CalendarioReservasApp(ctk.CTkFrame):
+    def __init__(self, root):
+        super().__init__(root, fg_color="transparent")
+        self.db_manager = DatabaseManager()
+        self.calendario_reservas = CalendarioReservas(self.db_manager)
+        self.ui_initialized = False
+        self.root = root
+        
+        # Configure styles
+        self.style = ttk.Style()
+        self.style.theme_use("clam")
+        self.style.configure("TButton", 
+                           foreground="white", 
+                           background="#c0392b", 
+                           font=("Arial", 11, "bold"),
+                           padding=(15, 8))
+        self.style.map("TButton",
+            background=[("active", "#e74c3c"), ("pressed", "#a93226")],
+            foreground=[("active", "#fff")]
+        )
+        self.style.configure("Treeview.Heading", 
+                           background="#c0392b", 
+                           foreground="white", 
+                           font=("Arial", 10, "bold"))
+        self.style.configure("Treeview", 
+                           background="#fff", 
+                           fieldbackground="#fff", 
+                           font=("Arial", 9),
+                           rowheight=25)
+        
+        # Main layout
+        self.create_layout()
+    
+    def create_layout(self):
+        """Create the main layout structure"""
+        # Header section
+        self.create_header()
+        
+        # Main content area
+        self.create_main_content()
+    
+    def create_header(self):
+        """Create the header with title and back button"""
+        header_frame = ctk.CTkFrame(self, fg_color="#c0392b", corner_radius=10, height=60)
+        header_frame.pack(fill="x", pady=(0, 20))
+        header_frame.pack_propagate(False)
+        
+        # Title
+        title_label = ctk.CTkLabel(
+            header_frame, 
+            text="📅 Gestor de Reservas", 
+            font=("Arial", 20, "bold"), 
+            text_color="white"
+        )
+        title_label.pack(side="left", padx=20, pady=15)
+        
+        # Back button
+        back_btn = ctk.CTkButton(
+            header_frame,
+            text="← Volver al Dashboard",
+            fg_color="transparent",
+            text_color="white",
+            font=("Arial", 12, "bold"),
+            hover_color="#e74c3c",
+            command=self.go_back
+        )
+        back_btn.pack(side="right", padx=20, pady=15)
+    
+    def create_main_content(self):
+        """Create the main content area with notebook"""
+        content_frame = ctk.CTkFrame(self, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True)
+        
+        # Create notebook
+        self.notebook = ttk.Notebook(content_frame)
+        self.notebook.pack(expand=True, fill="both")
+        
+        # Create tabs
+        self.create_search_reserve_tab()
+        self.create_view_cancel_tab()
+        
+        # Bind tab change event
+        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
+        self.ui_initialized = True
+    
+    def create_search_reserve_tab(self):
+        """Create the search and reserve tab"""
+        self.tab_search = ctk.CTkFrame(self.notebook, fg_color="transparent")
+        self.notebook.add(self.tab_search, text="🔍 Buscar y Reservar")
+        
+        # Search section
+        self.create_search_section()
+        
+        # Available rooms section
+        self.create_available_rooms_section()
+        
+        # Reservation section
+        self.create_reservation_section()
+    
+    def create_search_section(self):
+        """Create the search section"""
+        search_frame = ctk.CTkFrame(self.tab_search, fg_color="#f8f9fa", corner_radius=10)
+        search_frame.pack(fill="x")
+        
+        # Section title
+        title_label = ctk.CTkLabel(
+            search_frame,
+            text="🔍 Buscar Habitaciones Disponibles",
+            font=("Arial", 16, "bold"),
+            text_color="#2c3e50"
+        )
+        title_label.pack(pady=5)
+        
+        # Search form
+        form_frame = ctk.CTkFrame(search_frame, fg_color="transparent")
+        form_frame.pack(fill="x", padx=20, pady=(0, 15))
+        
+        # Date inputs
+        date_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
+        date_frame.pack(fill="x", pady=10)
+        
+        # Check-in date
+        checkin_label = ctk.CTkLabel(
+            date_frame,
+            text="📅 Fecha de Entrada:",
+            font=("Arial", 12, "bold"),
+            text_color="#2c3e50"
+        )
+        checkin_label.grid(row=0, column=0, padx=(0, 10), pady=5, sticky="w")
+        
+        self.date_entry_search_fecha_entrada = DateEntry(
+            date_frame, 
+            width=15, 
+            date_pattern='yyyy-mm-dd',
+            font=("Arial", 11)
+        )
+        self.date_entry_search_fecha_entrada.grid(row=0, column=1, padx=(0, 20), pady=5, sticky="w")
+        
+        # Check-out date
+        checkout_label = ctk.CTkLabel(
+            date_frame,
+            text="📅 Fecha de Salida:",
+            font=("Arial", 12, "bold"),
+            text_color="#2c3e50"
+        )
+        checkout_label.grid(row=0, column=2, padx=(0, 10), pady=5, sticky="w")
+        
+        self.date_entry_search_fecha_salida = DateEntry(
+            date_frame, 
+            width=15, 
+            date_pattern='yyyy-mm-dd',
+            font=("Arial", 11)
+        )
+        self.date_entry_search_fecha_salida.grid(row=0, column=3, padx=(0, 20), pady=5, sticky="w")
+        
+        # Room type filter
+        type_label = ctk.CTkLabel(
+            date_frame,
+            text="🏠 Tipo de Habitación:",
+            font=("Arial", 12, "bold"),
+            text_color="#2c3e50"
+        )
+        type_label.grid(row=0, column=4, padx=(0, 10), pady=5, sticky="w")
+        
+        self.combo_search_tipo_habitacion = ttk.Combobox(
+            date_frame,
+            values=["", "Individual", "Doble", "Suite"],
+            state="readonly",
+            font=("Arial", 11),
+            width=12
+        )
+        self.combo_search_tipo_habitacion.set("")
+        self.combo_search_tipo_habitacion.grid(row=0, column=5, padx=(0, 20), pady=5, sticky="w")
+        
+        # Search button
+        search_btn = ctk.CTkButton(
+            date_frame,
+            text="🔍 Buscar Disponibilidad",
+            fg_color="#3498db",
+            text_color="white",
+            font=("Arial", 12, "bold"),
+            height=35,
+            command=self.buscar_habitaciones
+        )
+        search_btn.grid(row=0, column=6, padx=(0, 0), pady=5)
+    
+    def create_available_rooms_section(self):
+        """Create the available rooms display section"""
+        rooms_frame = ctk.CTkFrame(self.tab_search, fg_color="#f8f9fa", corner_radius=10)
+        rooms_frame.pack(fill="both", expand=True)
+        
+        # Section title
+        title_label = ctk.CTkLabel(
+            rooms_frame,
+            text="🏠 Habitaciones Disponibles",
+            font=("Arial", 16, "bold"),
+            text_color="#2c3e50"
+        )
+        title_label.pack(pady=5)
+        
+        # Rooms list
+        self.listbox_habitaciones_disponibles = ctk.CTkTextbox(
+            rooms_frame, 
+            height=50, 
+            fg_color="white", 
+            border_color="#bdc3c7", 
+            border_width=2, 
+            font=("Arial", 11)
+        )
+        self.listbox_habitaciones_disponibles.pack(fill="both", expand=True, padx=20, pady=5)
+    
+    def create_reservation_section(self):
+        """Create the reservation form section"""
+        reserve_frame = ctk.CTkFrame(self.tab_search, fg_color="#f8f9fa", corner_radius=10)
+        reserve_frame.pack(fill="x")
+        
+        # Section title
+        title_label = ctk.CTkLabel(
+            reserve_frame,
+            text="📝 Hacer Nueva Reserva",
+            font=("Arial", 16, "bold"),
+            text_color="#2c3e50"
+        )
+        title_label.pack(pady=(15, 20))
+        
+        # Reservation form
+        form_frame = ctk.CTkFrame(reserve_frame, fg_color="transparent")
+        form_frame.pack(fill="x", padx=20, pady=(0, 15))
+        
+        # First row
+        row1 = ctk.CTkFrame(form_frame, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+        
+        # Room number
+        room_label = ctk.CTkLabel(
+            row1,
+            text="🏠 Número Habitación:",
+            font=("Arial", 12, "bold"),
+            text_color="#2c3e50"
+        )
+        room_label.pack(side="left", padx=(0, 10))
+        
+        self.entry_reserve_num_hab = ctk.CTkEntry(
+            row1,
+            fg_color="white",
+            border_color="#bdc3c7",
+            border_width=2,
+            font=("Arial", 11),
+            width=150
+        )
+        self.entry_reserve_num_hab.pack(side="left", padx=(0, 30))
+        
+        # Client ID
+        client_id_label = ctk.CTkLabel(
+            row1,
+            text="👤 ID Cliente:",
+            font=("Arial", 12, "bold"),
+            text_color="#2c3e50"
+        )
+        client_id_label.pack(side="left", padx=(0, 10))
+        
+        self.entry_reserve_id_cliente = ctk.CTkEntry(
+            row1,
+            fg_color="white",
+            border_color="#bdc3c7",
+            border_width=2,
+            font=("Arial", 11),
+            width=100
+        )
+        self.entry_reserve_id_cliente.pack(side="left")
+        
+        # Second row
+        row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
+        row2.pack(fill="x", pady=5)
+        
+        # Client selection
+        client_label = ctk.CTkLabel(
+            row2,
+            text="👥 Cliente:",
+            font=("Arial", 12, "bold"),
+            text_color="#2c3e50"
+        )
+        client_label.pack(side="left", padx=(0, 10))
+        
+        self.combo_clientes = ttk.Combobox(
+            row2,
+            state="readonly",
+            font=("Arial", 11),
+            width=40
+        )
+        self.combo_clientes.pack(side="left", padx=(0, 30))
+        self.combo_clientes.bind("<<ComboboxSelected>>", self.seleccionar_cliente_para_reserva)
+        
+        # Third row
+        row3 = ctk.CTkFrame(form_frame, fg_color="transparent")
+        row3.pack(fill="x", pady=5)
+        
+        # Check-in date
+        checkin_reserve_label = ctk.CTkLabel(
+            row3,
+            text="📅 Fecha Entrada:",
+            font=("Arial", 12, "bold"),
+            text_color="#2c3e50"
+        )
+        checkin_reserve_label.pack(side="left", padx=(0, 10))
+        
+        self.date_entry_reserve_fecha_entrada = DateEntry(
+            row3, 
+            width=15, 
+            date_pattern='yyyy-mm-dd',
+            font=("Arial", 11)
+        )
+        self.date_entry_reserve_fecha_entrada.pack(side="left", padx=(0, 30))
+        
+        # Check-out date
+        checkout_reserve_label = ctk.CTkLabel(
+            row3,
+            text="📅 Fecha Salida:",
+            font=("Arial", 12, "bold"),
+            text_color="#2c3e50"
+        )
+        checkout_reserve_label.pack(side="left", padx=(0, 10))
+        
+        self.date_entry_reserve_fecha_salida = DateEntry(
+            row3, 
+            width=15, 
+            date_pattern='yyyy-mm-dd',
+            font=("Arial", 11)
+        )
+        self.date_entry_reserve_fecha_salida.pack(side="left")
+        
+        # Confirm button
+        confirm_btn = ctk.CTkButton(
+            form_frame,
+            text="✅ Confirmar Reserva",
+            fg_color="#27ae60",
+            text_color="white",
+            font=("Arial", 12, "bold"),
+            height=40,
+            command=self.hacer_reserva
+        )
+        confirm_btn.pack(pady=15)
+    
+    def create_view_cancel_tab(self):
+        """Create the view and cancel reservations tab"""
+        self.tab_view = ctk.CTkFrame(self.notebook, fg_color="transparent")
+        self.notebook.add(self.tab_view, text="📋 Ver y Cancelar Reservas")
+        
+        # All reservations section
+        self.create_all_reservations_section()
+        
+        # Cancel reservation section
+        self.create_cancel_reservation_section()
+    
+    def create_all_reservations_section(self):
+        """Create the all reservations display section"""
+        reservations_frame = ctk.CTkFrame(self.tab_view, fg_color="#f8f9fa", corner_radius=10)
+        reservations_frame.pack(fill="both", expand=True)
+        
+        # Section title
+        title_label = ctk.CTkLabel(
+            reservations_frame,
+            text="📋 Todas las Reservas",
+            font=("Arial", 16, "bold"),
+            text_color="#2c3e50"
+        )
+        title_label.pack(pady=(15, 10))
+        
+        # Reservations list
+        self.listbox_todas_reservas = ctk.CTkTextbox(
+            reservations_frame, 
+            height=100, 
+            fg_color="white", 
+            border_color="#bdc3c7", 
+            border_width=2, 
+            font=("Arial", 11)
+        )
+        self.listbox_todas_reservas.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+        
+        # Refresh button
+        refresh_btn = ctk.CTkButton(
+            reservations_frame,
+            text="🔄 Actualizar Lista",
+            fg_color="#3498db",
+            text_color="white",
+            font=("Arial", 12, "bold"),
+            height=35,
+            command=self.refresh_reservas_listbox
+        )
+        refresh_btn.pack(pady=(0, 15))
+    
+    def create_cancel_reservation_section(self):
+        """Create the cancel reservation section"""
+        cancel_frame = ctk.CTkFrame(self.tab_view, fg_color="#f8f9fa", corner_radius=10)
+        cancel_frame.pack(fill="x")
+        
+        # Section title
+        title_label = ctk.CTkLabel(
+            cancel_frame,
+            text="❌ Cancelar Reserva",
+            font=("Arial", 16, "bold"),
+            text_color="#2c3e50"
+        )
+        title_label.pack(pady=(15, 20))
+        
+        # Cancel form
+        form_frame = ctk.CTkFrame(cancel_frame, fg_color="transparent")
+        form_frame.pack(fill="x", padx=20, pady=(0, 15))
+        
+        # Reservation ID
+        id_label = ctk.CTkLabel(
+            form_frame,
+            text="🆔 ID Reserva:",
+            font=("Arial", 12, "bold"),
+            text_color="#2c3e50"
+        )
+        id_label.pack(side="left", padx=(0, 10))
+        
+        self.entry_cancel_id_reserva = ctk.CTkEntry(
+            form_frame,
+            fg_color="white",
+            border_color="#bdc3c7",
+            border_width=2,
+            font=("Arial", 11),
+            width=150
+        )
+        self.entry_cancel_id_reserva.pack(side="left", padx=(0, 20))
+        
+        # Cancel button
+        cancel_btn = ctk.CTkButton(
+            form_frame,
+            text="❌ Cancelar Reserva",
+            fg_color="#e74c3c",
+            text_color="white",
+            font=("Arial", 12, "bold"),
+            height=35,
+            command=self.cancelar_reserva
+        )
+        cancel_btn.pack(side="left")
+
+    def on_tab_change(self, event):
+        """Handle tab change events"""
+        selected_tab = self.notebook.tab(self.notebook.select(), "text")
+        if selected_tab == "🔍 Buscar y Reservar":
+            self.populate_clientes_combo()
+    
+    def setup_ui(self):
+        """Setup the UI (called from main)"""
+        if not self.ui_initialized:
+            self.create_main_content()
+    
+    # Rest of the methods remain the same but with updated styling
+    def populate_clientes_combo(self):
+        """Populate the clients combobox"""
+        clientes = self.db_manager.get_all_clientes()
+        self.clientes_map = {f"ID {c.id}: {c.nombre} ({c.email})": c.id for c in clientes}
+        
+        if not clientes:
+            self.combo_clientes['values'] = ["No hay clientes registrados"]
+            self.combo_clientes.set("No hay clientes registrados")
+            self.combo_clientes.config(state="disabled")
+            self.entry_reserve_id_cliente.delete(0, tk.END)
+        else:
+            self.combo_clientes['values'] = list(self.clientes_map.keys())
+            self.combo_clientes.set(list(self.clientes_map.keys())[0])
+            self.combo_clientes.config(state="readonly")
+            self.entry_reserve_id_cliente.delete(0, tk.END)
+            self.entry_reserve_id_cliente.insert(0, str(clientes[0].id))
+
+    def seleccionar_cliente_para_reserva(self, event=None):
+        """Handle client selection for reservation"""
+        selected_text = self.combo_clientes.get()
+        if selected_text in self.clientes_map:
+            client_id = self.clientes_map[selected_text]
+            self.entry_reserve_id_cliente.delete(0, tk.END)
+            self.entry_reserve_id_cliente.insert(0, str(client_id))
+
+    def buscar_habitaciones(self):
+        """Search for available rooms"""
+        fecha_entrada_dt = self.date_entry_search_fecha_entrada.get_date()
+        fecha_salida_dt = self.date_entry_search_fecha_salida.get_date()
+        tipo = self.combo_search_tipo_habitacion.get()
+
+        fecha_entrada_str = fecha_entrada_dt.strftime('%Y-%m-%d')
+        fecha_salida_str = fecha_salida_dt.strftime('%Y-%m-%d')
+
+        disponibles, mensaje = self.calendario_reservas.buscar_habitaciones_disponibles(
+            fecha_entrada_str, fecha_salida_str, tipo if tipo else None
+        )
+        
+        self.listbox_habitaciones_disponibles.delete("1.0", tk.END)
+
+        if mensaje:
+            messagebox.showerror("Error de Búsqueda", mensaje)
+            return
+
+        if disponibles:
+            for hab in disponibles:
+                self.listbox_habitaciones_disponibles.insert(tk.END, str(hab) + "\n")
+            messagebox.showinfo("Búsqueda Exitosa", f"Se encontraron {len(disponibles)} habitaciones disponibles.")
+        else:
+            messagebox.showinfo("Sin Resultados", "No se encontraron habitaciones disponibles para los criterios dados.")
+
+    def hacer_reserva(self):
+        """Make a reservation"""
+        num_habitacion = self.entry_reserve_num_hab.get()
+        id_cliente = self.entry_reserve_id_cliente.get()
+        fecha_entrada_dt = self.date_entry_reserve_fecha_entrada.get_date()
+        fecha_salida_dt = self.date_entry_reserve_fecha_salida.get_date()
+
+        fecha_entrada_str = fecha_entrada_dt.strftime('%Y-%m-%d')
+        fecha_salida_str = fecha_salida_dt.strftime('%Y-%m-%d')
+
+        if not all([num_habitacion, id_cliente, fecha_entrada_str, fecha_salida_str]):
+            messagebox.showwarning("Advertencia", "Todos los campos de reserva son obligatorios.")
+            return
+
+        exito, mensaje = self.calendario_reservas.hacer_reserva(
+            num_habitacion, id_cliente, fecha_entrada_str, fecha_salida_str
+        )
+        
+        if exito:
+            messagebox.showinfo("Reserva Exitosa", mensaje)
+            self.clear_reserve_entries()
+            self.refresh_reservas_listbox()
+        else:
+            messagebox.showerror("Error de Reserva", mensaje)
+
+    def cancelar_reserva(self):
+        """Cancel a reservation"""
+        id_reserva = self.entry_cancel_id_reserva.get()
+
+        if not id_reserva:
+            messagebox.showwarning("Advertencia", "Por favor, ingrese el ID de la reserva a cancelar.")
+            return
+        
+        if not messagebox.askyesno("Confirmar Cancelación", f"¿Está seguro de cancelar la reserva con ID {id_reserva}?"):
+            return
+
+        exito, mensaje = self.calendario_reservas.cancelar_reserva(id_reserva)
+        if exito:
+            messagebox.showinfo("Cancelación Exitosa", mensaje)
+            self.entry_cancel_id_reserva.delete(0, tk.END)
+            self.refresh_reservas_listbox()
+        else:
+            messagebox.showerror("Error de Cancelación", mensaje)
+
+    def refresh_reservas_listbox(self):
+        """Refresh the reservations list"""
+        self.listbox_todas_reservas.delete("1.0", tk.END)
+        reservas_detalle = self.calendario_reservas.get_all_reservas_detalle()
+        if reservas_detalle:
+            for reserva in reservas_detalle:
+                self.listbox_todas_reservas.insert(tk.END, str(reserva) + "\n")
+        else:
+            self.listbox_todas_reservas.insert(tk.END, "No hay reservas registradas.")
+
+    def clear_reserve_entries(self):
+        """Clear reservation form entries"""
+        self.entry_reserve_num_hab.delete(0, tk.END)
+        self.entry_reserve_id_cliente.delete(0, tk.END)
+
+    def go_back(self):
+        """
+        Función para regresar al dashboard principal.
+        Busca el widget padre que tenga el método atras_reservas y lo ejecuta.
+        """
+        # Busca el widget padre que tenga el método atras_reservas
+        parent = self.master  # Obtiene el widget padre
+        while parent:  # Mientras exista un widget padre
+            if hasattr(parent, 'atras_reservas'):  # Verifica si tiene el método
+                parent.atras_reservas()  # Ejecuta el método
+                break  # Sale del bucle
+            parent = parent.master  # Obtiene el siguiente widget padre
+
+# Keep the existing database classes (DatabaseManager, Cliente, Habitacion, CalendarioReservas) as they are
+# since they handle the business logic and don't need UI restructuring
 
 class Habitacion:
     def __init__(self, numero, tipo, precio_por_noche):
@@ -315,242 +892,7 @@ class CalendarioReservas:
     def get_all_reservas_detalle(self):
         return self.db_manager.get_all_reservas()
 
-# --- Interfaz Gráfica---
-
-class CalendarioReservasApp(ttk.Frame): #convertido a frame para integración
-    def __init__(self, root):
-        super().__init__(root, width=900, height=700)
-        self.db_manager = DatabaseManager() # Instancia el gestor de la DB
-        self.calendario_reservas = CalendarioReservas(self.db_manager)
-
-        self.ui_initialized = False #JSS: ni idea que hace esto, pregunten a google
-        
-        self.root = root
-        # self.root.title("Módulo de Calendario de Reservas ")
-        # self.root.geometry("900x700")
-
-        # self.setup_ui() JS: se colocó en main.py
-        
-        # self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-    
-    # def on_closing(self):
-    #     if messagebox.askokcancel("Salir", "¿Estás seguro de que quieres salir?"):
-    #         self.db_manager.close()
-    #         self.root.destroy()
-
-    def setup_ui(self):
-        if self.ui_initialized:
-            return #JSS: vuelvo y repito, busquen en google que no se
-
-        self.notebook = ttk.Notebook(self) #JSS: modificado pa la integracion
-        self.notebook.pack(expand=True, fill="both", padx=10, pady=10)
-
-        self.frame_buscar_reservar = ttk.Frame(self.notebook)
-        self.notebook.add(self.frame_buscar_reservar, text="Buscar y Reservar")
-        self.create_buscar_reservar_tab(self.frame_buscar_reservar)
-
-        self.frame_ver_cancelar = ttk.Frame(self.notebook)
-        self.notebook.add(self.frame_ver_cancelar, text="Ver y Cancelar Reservas")
-        self.create_ver_cancelar_tab(self.frame_ver_cancelar)
-        
-        # Al inicio, o cuando la pestaña de clientes es seleccionada, refrescar los clientes
-        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
-
-        self.ui_initialized = True #JSS: esto es magia negra
-
-    def on_tab_change(self, event):
-        selected_tab = self.notebook.tab(self.notebook.select(), "text")
-        if selected_tab == "Buscar y Reservar":
-            self.populate_clientes_combo() # para asegurar que le  combobox de clientes esté actualizado
-
-    def create_buscar_reservar_tab(self, parent_frame):
-        search_frame = ttk.LabelFrame(parent_frame, text="Buscar Habitaciones Disponibles")
-        search_frame.pack(padx=10, pady=10, fill="x")
-
-        ttk.Label(search_frame, text="Fecha Entrada:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.date_entry_search_fecha_entrada = DateEntry(search_frame, width=12, background='darkblue',
-                                                         foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
-        self.date_entry_search_fecha_entrada.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-        ttk.Label(search_frame, text="Fecha Salida:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        self.date_entry_search_fecha_salida = DateEntry(search_frame, width=12, background='darkblue',
-                                                        foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
-        self.date_entry_search_fecha_salida.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
-
-        ttk.Label(search_frame, text="Tipo de Habitación:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
-        self.combo_search_tipo_habitacion = ttk.Combobox(search_frame, values=["", "Individual", "Doble", "Suite"])
-        self.combo_search_tipo_habitacion.set("")
-        self.combo_search_tipo_habitacion.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
-
-        ttk.Button(search_frame, text="Buscar Disponibilidad", command=self.buscar_habitaciones).grid(row=3, column=0, columnspan=2, pady=10)
-
-        self.listbox_habitaciones_disponibles = tk.Listbox(parent_frame, height=8, width=50)
-        self.listbox_habitaciones_disponibles.pack(padx=10, pady=5, fill="both", expand=True)
-
-        reserve_frame = ttk.LabelFrame(parent_frame, text="Hacer Nueva Reserva")
-        reserve_frame.pack(padx=10, pady=10, fill="x")
-
-        ttk.Label(reserve_frame, text="Número Habitación:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.entry_reserve_num_hab = ttk.Entry(reserve_frame)
-        self.entry_reserve_num_hab.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-        ttk.Label(reserve_frame, text="ID Cliente:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        self.entry_reserve_id_cliente = ttk.Entry(reserve_frame)
-        self.entry_reserve_id_cliente.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
-        
-        ttk.Label(reserve_frame, text="Clientes Existentes:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
-        self.combo_clientes = ttk.Combobox(reserve_frame, state="readonly")
-        self.combo_clientes.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
-        self.combo_clientes.bind("<<ComboboxSelected>>", self.seleccionar_cliente_para_reserva)
-        self.populate_clientes_combo() # Cargar clientes al inicio de la pestaña
-
-        ttk.Label(reserve_frame, text="Fecha Entrada (reserva):").grid(row=3, column=0, padx=5, pady=5, sticky="w")
-        self.date_entry_reserve_fecha_entrada = DateEntry(reserve_frame, width=12, background='darkblue',
-                                                          foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
-        self.date_entry_reserve_fecha_entrada.grid(row=3, column=1, padx=5, pady=5, sticky="ew")
-
-        ttk.Label(reserve_frame, text="Fecha Salida (reserva):").grid(row=4, column=0, padx=5, pady=5, sticky="w")
-        self.date_entry_reserve_fecha_salida = DateEntry(reserve_frame, width=12, background='darkblue',
-                                                         foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
-        self.date_entry_reserve_fecha_salida.grid(row=4, column=1, padx=5, pady=5, sticky="ew")
-
-        ttk.Button(reserve_frame, text="Confirmar Reserva", command=self.hacer_reserva).grid(row=5, column=0, columnspan=2, pady=10)
-
-        #JSS: Aquí agrego el botón de Atrás
-        ttk.Button(reserve_frame, text="Atrás", command=self.root.atras_reservas).place(relx=0.85, rely=0.9, anchor="center")
-
-        
-
-    def create_ver_cancelar_tab(self, parent_frame):
-        all_reservations_frame = ttk.LabelFrame(parent_frame, text="Todas las Reservas")
-        all_reservations_frame.pack(padx=10, pady=10, fill="both", expand=True)
-
-        self.listbox_todas_reservas = tk.Listbox(all_reservations_frame, height=15)
-        self.listbox_todas_reservas.pack(padx=5, pady=5, fill="both", expand=True)
-        self.refresh_reservas_listbox()
-
-        cancel_reservation_frame = ttk.LabelFrame(parent_frame, text="Cancelar Reserva")
-        cancel_reservation_frame.pack(padx=10, pady=10, fill="x")
-
-        ttk.Label(cancel_reservation_frame, text="ID Reserva:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.entry_cancel_id_reserva = ttk.Entry(cancel_reservation_frame)
-        self.entry_cancel_id_reserva.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-        ttk.Button(cancel_reservation_frame, text="Cancelar Reserva", command=self.cancelar_reserva).grid(row=1, column=0, columnspan=2, pady=10)
-        
-        ttk.Button(all_reservations_frame, text="Actualizar Lista", command=self.refresh_reservas_listbox).pack(pady=5)
-
-        #JSS: Aquí agrego el botón de Atrás
-        ttk.Button(cancel_reservation_frame, text="Atrás", command=self.root.atras_reservas).place(relx=0.85, rely=0.7, anchor="center")
-
-    def populate_clientes_combo(self):
-        clientes = self.db_manager.get_all_clientes()
-        self.clientes_map = {f"ID {c.id}: {c.nombre} ({c.email})": c.id for c in clientes}
-        
-        if not clientes:
-            self.combo_clientes['values'] = ["No hay clientes registrados"]
-            self.combo_clientes.set("No hay clientes registrados")
-            self.combo_clientes.config(state="disabled") # Deshabilitar si no hay clientes
-            self.entry_reserve_id_cliente.delete(0, tk.END)
-        else:
-            self.combo_clientes['values'] = list(self.clientes_map.keys())
-            self.combo_clientes.set(list(self.clientes_map.keys())[0])
-            self.combo_clientes.config(state="readonly")
-            self.entry_reserve_id_cliente.delete(0, tk.END)
-            self.entry_reserve_id_cliente.insert(0, str(clientes[0].id)) # Selecciona el ID del primer cliente por defecto
-
-    def seleccionar_cliente_para_reserva(self, event=None):
-        selected_text = self.combo_clientes.get()
-        if selected_text in self.clientes_map:
-            client_id = self.clientes_map[selected_text]
-            self.entry_reserve_id_cliente.delete(0, tk.END)
-            self.entry_reserve_id_cliente.insert(0, str(client_id))
-
-    def buscar_habitaciones(self):
-        fecha_entrada_dt = self.date_entry_search_fecha_entrada.get_date()
-        fecha_salida_dt = self.date_entry_search_fecha_salida.get_date()
-        tipo = self.combo_search_tipo_habitacion.get()
-
-        fecha_entrada_str = fecha_entrada_dt.strftime('%Y-%m-%d')
-        fecha_salida_str = fecha_salida_dt.strftime('%Y-%m-%d')
-
-        disponibles, mensaje = self.calendario_reservas.buscar_habitaciones_disponibles(fecha_entrada_str, fecha_salida_str, tipo if tipo else None)
-        
-        self.listbox_habitaciones_disponibles.delete(0, tk.END)
-
-        if mensaje:
-            messagebox.showerror("Error de Búsqueda", mensaje)
-            return
-
-        if disponibles:
-            for hab in disponibles:
-                self.listbox_habitaciones_disponibles.insert(tk.END, str(hab))
-            messagebox.showinfo("Búsqueda Exitosa", f"Se encontraron {len(disponibles)} habitaciones disponibles.")
-        else:
-            messagebox.showinfo("Sin Resultados", "No se encontraron habitaciones disponibles para los criterios dados o no hay habitaciones registradas.")
-
-    def hacer_reserva(self):
-        num_habitacion = self.entry_reserve_num_hab.get()
-        id_cliente = self.entry_reserve_id_cliente.get()
-        fecha_entrada_dt = self.date_entry_reserve_fecha_entrada.get_date()
-        fecha_salida_dt = self.date_entry_reserve_fecha_salida.get_date()
-
-        fecha_entrada_str = fecha_entrada_dt.strftime('%Y-%m-%d')
-        fecha_salida_str = fecha_salida_dt.strftime('%Y-%m-%d')
-
-        if not all([num_habitacion, id_cliente, fecha_entrada_str, fecha_salida_str]):
-            messagebox.showwarning("Advertencia", "Todos los campos de reserva son obligatorios.")
-            return
-
-        exito, mensaje = self.calendario_reservas.hacer_reserva(num_habitacion, id_cliente, fecha_entrada_str, fecha_salida_str)
-        
-        if exito:
-            messagebox.showinfo("Reserva Exitosa", mensaje)
-            self.clear_reserve_entries()
-            self.refresh_reservas_listbox()
-        else:
-            messagebox.showerror("Error de Reserva", mensaje)
-
-    def cancelar_reserva(self):
-        id_reserva = self.entry_cancel_id_reserva.get()
-
-        if not id_reserva:
-            messagebox.showwarning("Advertencia", "Por favor, ingrese el ID de la reserva a cancelar.")
-            return
-        
-        if not messagebox.askyesno("Confirmar Cancelación", f"¿Está seguro de cancelar la reserva con ID {id_reserva}?"):
-            return
-
-        exito, mensaje = self.calendario_reservas.cancelar_reserva(id_reserva)
-        if exito:
-            messagebox.showinfo("Cancelación Exitosa", mensaje)
-            self.entry_cancel_id_reserva.delete(0, tk.END)
-            self.refresh_reservas_listbox()
-        else:
-            messagebox.showerror("Error de Cancelación", mensaje)
-
-    def refresh_reservas_listbox(self):
-        self.listbox_todas_reservas.delete(0, tk.END)
-        reservas_detalle = self.calendario_reservas.get_all_reservas_detalle()
-        if reservas_detalle:
-            for r in reservas_detalle:
-                display_text = (f"ID: {r['id']} | Hab: {r['numero_habitacion']} ({r['tipo_habitacion']}) | "
-                                f"Cliente: {r['nombre_cliente']} (ID: {r['id_cliente']}) | "
-                                f"Entrada: {r['fecha_entrada'].strftime('%Y-%m-%d')} | "
-                                f"Salida: {r['fecha_salida'].strftime('%Y-%m-%d')} | "
-                                f"Costo/noche: ${r['precio_por_noche']:.2f}")
-                self.listbox_todas_reservas.insert(tk.END, display_text)
-        else:
-            self.listbox_todas_reservas.insert(tk.END, "No hay reservas actualmente.")
-
-    def clear_reserve_entries(self):
-        self.entry_reserve_num_hab.delete(0, tk.END)
-       
-        
-
-
 if __name__ == "__main__":
-    
     root = tk.Tk()
     app = CalendarioReservasApp(root)
     root.mainloop()
