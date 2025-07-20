@@ -169,7 +169,8 @@ class GestorClientes(ctk.CTkFrame):
             self.tree.delete(item)
 
         try:
-            conn = sql.connect("base_datos.db")
+            conn = sql.connect("base_datos.db", detect_types=sql.PARSE_DECLTYPES)
+            conn.text_factory = str
             cursor = conn.cursor()
 
             cursor.execute("SELECT nombres, apellidos, tipo_doc, numero_doc, fecha_nac, genero, nacionalidad, telefono, email FROM cliente ORDER BY nombres")
@@ -204,7 +205,7 @@ class GestorClientes(ctk.CTkFrame):
             
             #ejecuta consulta de búsqueda con parámetros
             cursor.execute("""
-                SELECT * FROM cliente 
+                SELECT nombres, apellidos, tipo_doc, numero_doc, fecha_nac, genero, nacionalidad, telefono, email FROM cliente 
                 WHERE nombres LIKE ? OR apellidos LIKE ? OR email LIKE ? OR telefono LIKE ? OR numero_doc LIKE ?
                 ORDER BY nombres
             """, (f'%{busqueda}%', f'%{busqueda}%', f'%{busqueda}%', f'%{busqueda}%', f'%{busqueda}%'))
@@ -223,15 +224,15 @@ class GestorClientes(ctk.CTkFrame):
         self.busqueda_var.set("")
         self.cargar_clientes()
 
-    def on_select(self):
+    def on_select(self, event):
         #evento de seleccion de una fila en la tabla, almacena la info del cliente seleccionado
 
         #obtiene la fila seleccionada
         selection = self.tree.selection()
 
         if selection:
-            item = self.tree.item(selection[0])
-            self.cliente_actual = item["values"]
+            self.cliente_actual = self.tree.item(selection[0], "values")
+            print("cliente seleccionado: ", self.cliente_actual)
 
     def agregar_cliente(self):
         #abre la ventana de dialogo para agrega un nuevo cliente
@@ -239,7 +240,7 @@ class GestorClientes(ctk.CTkFrame):
         #creacion de la ventana de dialogo
         dialog = ctk.CTkToplevel(self)
         dialog.title("Agregar Nuevo Cliente")
-        dialog.geometry("500x400")
+        dialog.geometry("500x900")
         dialog.resizable(False, False) #para que se quede con tamaño constante
         dialog.transient(self) #se mantiene siempre delante de la principal, y se cierra si la principal se cierra
         dialog.grab_set() #hace que no se pueda usar la ventana principal hasta que se cierre o complete la ventana de dialogo
@@ -266,7 +267,7 @@ class GestorClientes(ctk.CTkFrame):
         #creacion de la ventana de dialogo
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar Cliente")
-        dialog.geometry("500x400")
+        dialog.geometry("500x900")
         dialog.resizable(False, False)
         dialog.transient(self)
         dialog.grab_set()
@@ -377,14 +378,14 @@ class GestorClientes(ctk.CTkFrame):
         fecha_nac_entry.pack(fill="x", pady=(0, 15))
 
         #campo de genero
-        genero_label = ctk.CTkLabel(form_frame, text="Cumpleaños", font=("Arial", 12, "bold"))
+        genero_label = ctk.CTkLabel(form_frame, text="Género", font=("Arial", 12, "bold"))
         genero_label.pack(anchor="w", pady=(0, 5))
 
         genero_entry = ctk.CTkEntry(form_frame, textvariable=genero_var, placeholder_text="Ingrese el genero", height=35, font=("Arial", 12))
         genero_entry.pack(fill="x", pady=(0, 15))
 
         #campo de nacionalidad
-        nacionalidad_label = ctk.CTkLabel(form_frame, text="Cumpleaños", font=("Arial", 12, "bold"))
+        nacionalidad_label = ctk.CTkLabel(form_frame, text="Nacionalidad", font=("Arial", 12, "bold"))
         nacionalidad_label.pack(anchor="w", pady=(0, 5))
 
         nacionalidad_entry = ctk.CTkEntry(form_frame, textvariable=nacionalidad_var, placeholder_text="Ingrese la nacionalidad", height=35, font=("Arial", 12))
