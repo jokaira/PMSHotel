@@ -2,12 +2,10 @@
 # Importación de librerías necesarias para la interfaz gráfica y base de datos
 import customtkinter as ctk  # Librería moderna para widgets de tkinter
 from tkinter import ttk, messagebox  # Widgets temáticos y cuadros de diálogo
-import sqlite3 as sql  # Para conexión con base de datos SQLite
 from tkinter import *  # Importa todos los widgets básicos de tkinter
 import tkinter as tk
 
-import manejo_habitaciones #
-import BD_Modulo_Habitaciones #
+import manejo_habitaciones
 
 #Aplicación principal de gestión de habitaciones.
 #Proporciona una interfaz gráfica para visualizar, añadir,
@@ -414,7 +412,7 @@ class GestionDeHabitacionesApp(ctk.CTkFrame):
         
         if messagebox.askyesno("Confirmar", f"¿Está seguro de eliminar la habitación {room_data[1]}?"):
             try:
-                # Add delete functionality here
+                manejo_habitaciones.eliminar_habitacion(room_id)
                 messagebox.showinfo("Éxito", "Habitación eliminada exitosamente")
                 self.load_rooms()
             except Exception as error:
@@ -578,17 +576,46 @@ class EditRoomWindow(ctk.CTkToplevel): #
 
         ctk.CTkLabel(form_frame, text="Número de Habitación:", text_color="#c0392b", fg_color="#fff").grid(row=0, column=0, padx=5, pady=5, sticky="w") #
         self.entry_numero = ctk.CTkEntry(form_frame, fg_color="#fff", border_color="#c0392b", border_width=2) #
-        self.entry_numero.grid(row=0, column=1, padx=5, pady=5, sticky="ew") #
+        self.entry_numero.grid(row=0, column=1, columnspan = 6,padx=5, pady=5, sticky="ew") #
 
         ctk.CTkLabel(form_frame, text="Tipo de Habitación:", text_color="#c0392b", fg_color="#fff").grid(row=1, column=0, padx=5, pady=5, sticky="w") #
         self.type_options = [t['nombre_tipo'] for t in manejo_habitaciones.obtener_tipos_hab_disponible()] #
         self.combo_tipo = ttk.Combobox(form_frame, values=self.type_options, state="readonly") #
-        self.combo_tipo.grid(row=1, column=1, padx=5, pady=5, sticky="ew") #
+        self.combo_tipo.grid(row=1, column=1, columnspan = 6,padx=5, pady=5, sticky="ew") #
 
         ctk.CTkLabel(form_frame, text="Estado Actual:", text_color="#c0392b", fg_color="#fff").grid(row=2, column=0, padx=5, pady=5, sticky="w") #
         self.state_options = [s['nombre_estado'] for s in manejo_habitaciones.obtener_estado_hab_disponible()] #
         self.combo_estado = ttk.Combobox(form_frame, values=self.state_options, state="readonly") #
-        self.combo_estado.grid(row=2, column=1, padx=5, pady=5, sticky="ew") #
+        self.combo_estado.grid(row=2, column=1, columnspan = 6,padx=5, pady=5, sticky="ew") #
+
+        ctk.CTkLabel(form_frame, text="Ubicación:", text_color="#c0392b", fg_color="#fff").grid(row=3, column=0, padx=5, pady=5, sticky="w") #
+        self.entry_ubicacion = ctk.CTkEntry(form_frame, fg_color="#fff", border_color="#c0392b", border_width=2) #
+        self.entry_ubicacion.grid(row=3, column=1, columnspan = 6,padx=5, pady=5, sticky="ew") #
+
+        ctk.CTkLabel(form_frame, text="Capacidad Máxima:", text_color="#c0392b", fg_color="#fff").grid(row=4, column=0, padx=5, pady=5, sticky="w") #
+        self.entry_capacidad = ctk.CTkEntry(form_frame, fg_color="#fff", border_color="#c0392b", border_width=2) #
+        self.entry_capacidad.grid(row=4, column=1, columnspan = 6,padx=5, pady=5, sticky="ew") #
+
+        ctk.CTkLabel(form_frame, text="Notas Internas:", text_color="#c0392b", fg_color="#fff").grid(row=5, column=0, padx=5, pady=5, sticky="w") #
+        self.entry_notas = ctk.CTkEntry(form_frame, fg_color="#fff", border_color="#c0392b", border_width=2) #
+        self.entry_notas.grid(row=5, column=1, columnspan = 6,padx=5, pady=5, sticky="ew") #
+
+        ctk.CTkButton(form_frame, text="💾Guardar Cambios", command=self.save_changes, 
+            fg_color="#27ae60",
+            text_color="white",
+            font=("Arial", 12, "bold"),
+            height=40).grid(row=6, column=0, columnspan=2, pady=10)
+        
+        ctk.CTkButton(
+            form_frame,
+            text="❌ Cancelar",
+            fg_color="#95a5a6",
+            text_color="white",
+            font=("Arial", 12, "bold"),
+            height=40,
+            command=self.destroy
+        ).grid(row=6, column=4, columnspan=2, pady=10)
+
 
         form_frame.columnconfigure(1, weight=1) #
 
@@ -689,10 +716,6 @@ class ChangeStatusWindow(ctk.CTkToplevel): #
             self.destroy() #
         else:
             messagebox.showerror("Error", "Error al actualizar el estado de la habitación.") #
-
-# if __name__=="__main__": # JSS: comentado porque ya no se trata de un tk.Tk
-#     app=GestionDeHabitacionesApp() #
-#     app.mainloop() #
 
 
 
