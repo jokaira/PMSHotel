@@ -374,16 +374,28 @@ class CalendarioReservasApp(ctk.CTkFrame):
         )
         title_label.pack(pady=(15, 10))
         
-        # Reservations list
-        self.listbox_todas_reservas = ctk.CTkTextbox(
-            reservations_frame, 
-            height=100, 
-            fg_color="white", 
-            border_color="#bdc3c7", 
-            border_width=2, 
-            font=("Arial", 11)
-        )
-        self.listbox_todas_reservas.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+        # Tabla de reservas (Treeview)
+        columns = ("id", "habitacion", "tipo", "cliente", "email", "entrada", "salida", "precio")
+        self.tree_reservas = ttk.Treeview(reservations_frame, columns=columns, show="headings", height=6)
+        self.tree_reservas.heading("id", text="ID")
+        self.tree_reservas.heading("habitacion", text="Habitación")
+        self.tree_reservas.heading("tipo", text="Tipo")
+        self.tree_reservas.heading("cliente", text="Cliente")
+        self.tree_reservas.heading("email", text="Email")
+        self.tree_reservas.heading("entrada", text="Entrada")
+        self.tree_reservas.heading("salida", text="Salida")
+        self.tree_reservas.heading("precio", text="Precio/Noche")
+        self.tree_reservas.column("id", width=40, anchor="center")
+        self.tree_reservas.column("habitacion", width=80, anchor="center")
+        self.tree_reservas.column("tipo", width=80, anchor="center")
+        self.tree_reservas.column("cliente", width=150, anchor="w")
+        self.tree_reservas.column("email", width=150, anchor="w")
+        self.tree_reservas.column("entrada", width=90, anchor="center")
+        self.tree_reservas.column("salida", width=90, anchor="center")
+        self.tree_reservas.column("precio", width=90, anchor="center")
+        self.tree_reservas.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+        # Deshabilitar edición directa
+        self.tree_reservas.bind('<Key>', lambda e: 'break')
         
         # Refresh button
         refresh_btn = ctk.CTkButton(
@@ -554,14 +566,25 @@ class CalendarioReservasApp(ctk.CTkFrame):
             messagebox.showerror("Error de Cancelación", mensaje)
 
     def refresh_reservas_listbox(self):
-        """Refresh the reservations list"""
-        self.listbox_todas_reservas.delete("1.0", tk.END)
+        """Refresh the reservations table"""
+        # Limpiar la tabla
+        for row in self.tree_reservas.get_children():
+            self.tree_reservas.delete(row)
         reservas_detalle = self.calendario_reservas.get_all_reservas_detalle()
         if reservas_detalle:
             for reserva in reservas_detalle:
-                self.listbox_todas_reservas.insert(tk.END, str(reserva) + "\n")
+                self.tree_reservas.insert("", tk.END, values=(
+                    reserva['id'],
+                    reserva['numero_habitacion'],
+                    reserva['tipo_habitacion'],
+                    reserva['nombre_cliente'],
+                    reserva['email_cliente'],
+                    reserva['fecha_entrada'].strftime('%d/%m/%Y'),
+                    reserva['fecha_salida'].strftime('%d/%m/%Y'),
+                    f"${reserva['precio_por_noche']:.2f}"
+                ))
         else:
-            self.listbox_todas_reservas.insert(tk.END, "No hay reservas registradas.")
+            self.tree_reservas.insert("", tk.END, values=("-", "-", "-", "No hay reservas registradas.", "", "", "", ""))
 
     def clear_reserve_entries(self):
         """Clear reservation form entries"""
