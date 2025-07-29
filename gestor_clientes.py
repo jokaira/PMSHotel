@@ -3,6 +3,7 @@ import customtkinter as ctk
 import sqlite3 as sql #para conexión y queries a la base de datos
 import tkinter as tk
 from tkinter import ttk, messagebox #widgets mas modernos y cuadros de dialogo
+from email_validator import validate_email, EmailNotValidError #para validar el correo electronico
 
 class GestorClientes(ctk.CTkFrame):
     #modulo completo de gestión de clientes
@@ -234,6 +235,19 @@ class GestorClientes(ctk.CTkFrame):
             self.cliente_actual = self.tree.item(selection[0], "values")
             print("cliente seleccionado: ", self.cliente_actual)
 
+    def validar_email(self, email):
+        if not email:
+            return False, "El correo electrónico es obligatorio"
+        try:
+            valid = validate_email(email)
+            #normaliza el email
+            email_normalizado = valid.email
+            return True, "Email válido"
+        except EmailNotValidError as e:
+            return False, f"El formato del correo electrónico no es válido: {str(e)}"
+        except Exception as e:
+            return False, f"Error inesperado al validar email: {str(e)}"
+
     def agregar_cliente(self):
         #abre la ventana de dialogo para agrega un nuevo cliente
 
@@ -426,6 +440,12 @@ class GestorClientes(ctk.CTkFrame):
                 messagebox.showerror("Error", "Por favor complete todos los campos obligatorios")
                 return
             
+            #validacion del formato del correo electrónico
+            es_valido, mensaje = self.validar_email(email)
+            if not es_valido:
+                messagebox.showerror("Error de validación", mensaje)
+                return
+
             try:
                 conn = sql.connect("base_datos.db")
                 cursor=conn.cursor()
