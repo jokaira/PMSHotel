@@ -11,14 +11,14 @@ La aplicación utiliza una base de datos local SQLite (`base_datos.db`).
 
 ## Requisitos
 - Python 3.8+
-- Paquetes: `customtkinter`, `tkinter`, `tkcalendar`, `sqlite3`
+- Paquetes: `customtkinter`, `tkinter`, `tkcalendar`, `sqlite3`, `email-validator`
 
 Se recomienda usar un entorno virtual.
 
 ## Ejecución
 1. Instala las dependencias necesarias:
    ```bash
-   pip install customtkinter tkcalendar
+   pip install customtkinter tkcalendar email-validator
    ```
 2. Ejecuta el sistema:
    ```bash
@@ -36,12 +36,13 @@ Permite registrar, editar, buscar, listar y eliminar huéspedes.
 - Género
 - Nacionalidad
 - Teléfono
-- Email
+- Email (con validación de formato)
 
 **Operaciones:**
 - Alta y edición de clientes
 - Búsqueda por nombre, documento, teléfono o email
 - Eliminación y refresco de la lista
+- Validación automática del formato de correo electrónico
 
 ### 2. Gestión de Habitaciones
 Administra el inventario de habitaciones del hotel.
