@@ -295,7 +295,7 @@ class GestorClientes(ctk.CTkFrame):
         #creacion de la ventana de dialogo
         dialog = ctk.CTkToplevel(self)
         dialog.title("Agregar Nuevo Cliente")
-        dialog.geometry("500x900")
+        dialog.geometry("700x600")
         dialog.resizable(False, False) #para que se quede con tamaño constante
         dialog.transient(self) #se mantiene siempre delante de la principal, y se cierra si la principal se cierra
         dialog.grab_set() #hace que no se pueda usar la ventana principal hasta que se cierre o complete la ventana de dialogo
@@ -322,7 +322,7 @@ class GestorClientes(ctk.CTkFrame):
         #creacion de la ventana de dialogo
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar Cliente")
-        dialog.geometry("500x900")
+        dialog.geometry("700x600")
         dialog.resizable(False, False)
         dialog.transient(self)
         dialog.grab_set()
@@ -370,9 +370,27 @@ class GestorClientes(ctk.CTkFrame):
             #dialog: ventana de dialogo
             #mode: modo del formulario (agregar o editar)
         
-        #frame para los campos
+        #frame padre
         form_frame = ctk.CTkFrame(parent, fg_color="transparent")
         form_frame.pack(fill="both", expand=True, padx=20)
+
+        #frame para columnas de campos
+        columns_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
+        columns_frame.pack(fill="both", expand=True)
+        columns_frame.grid_columnconfigure(0, weight=1)
+        columns_frame.grid_columnconfigure(1, weight=1)
+        
+        #columna izquierda
+        left_frame = ctk.CTkFrame(columns_frame, fg_color="transparent")
+        left_frame.grid(row=0, column=0, sticky="nsew", padx=(0,10))
+
+        #columna derecha
+        right_frame = ctk.CTkFrame(columns_frame, fg_color="transparent")
+        right_frame.grid(row=0, column=1, sticky="nsew", padx=(10,0))
+
+        #frame para los botones
+        button_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
+        button_frame.pack(fill="both", expand=True, pady = (0,10))
 
         #variables de los campos
         nombres_var = tk.StringVar()
@@ -398,71 +416,69 @@ class GestorClientes(ctk.CTkFrame):
             email_var.set(self.cliente_actual[8])
 
         #campo de nombres
-        nombres_label = ctk.CTkLabel(form_frame, text="Nombres:", font=("Arial", 12, "bold"))
+        nombres_label = ctk.CTkLabel(left_frame, text="Nombres:", font=("Arial", 12, "bold"))
         nombres_label.pack(anchor="w", pady=(0, 5))
         
-        nombres_entry = ctk.CTkEntry(form_frame, textvariable=nombres_var, placeholder_text="Ingrese los nombres", height=35, font=("Arial", 12))
+        nombres_entry = ctk.CTkEntry(left_frame, textvariable=nombres_var, placeholder_text="Ingrese los nombres", height=35, font=("Arial", 12))
         nombres_entry.pack(fill="x", pady=(0, 15))
 
         #campo de apellidos
-        apellidos_label = ctk.CTkLabel(form_frame, text="Apellidos:", font=("Arial", 12, "bold"))
+        apellidos_label = ctk.CTkLabel(right_frame, text="Apellidos:", font=("Arial", 12, "bold"))
         apellidos_label.pack(anchor="w", pady=(0, 5))
 
-        apellidos_entry = ctk.CTkEntry(form_frame, textvariable=apellidos_var, placeholder_text="Ingrese los apellidos", height=35, font=("Arial", 12))
+        apellidos_entry = ctk.CTkEntry(right_frame, textvariable=apellidos_var, placeholder_text="Ingrese los apellidos", height=35, font=("Arial", 12))
         apellidos_entry.pack(fill="x", pady=(0, 15))
 
         #combobox de tipo de documento
-        tipo_doc_label = ctk.CTkLabel(form_frame, text="Tipo de Documento:", font=("Arial", 12, "bold"))
+        tipo_doc_label = ctk.CTkLabel(left_frame, text="Tipo de Documento:", font=("Arial", 12, "bold"))
         tipo_doc_label.pack(anchor="w", pady=(0, 5))
 
-        tipo_doc_combobox = ttk.Combobox(form_frame, textvariable=tipo_doc_var, values=["Cédula", "Pasaporte"], state="readonly",  font=("Arial", 12), height=35)
+        tipo_doc_combobox = ttk.Combobox(left_frame, textvariable=tipo_doc_var, values=["Cédula", "Pasaporte"], state="readonly",  font=("Arial", 12), height=35)
         tipo_doc_combobox.pack(fill="x", pady=(0, 15))
 
         #campo de numero de documento
-        numero_doc_label = ctk.CTkLabel(form_frame, text="Número de Documento:", font=("Arial", 12, "bold"))
+        numero_doc_label = ctk.CTkLabel(right_frame, text="Número de Documento:", font=("Arial", 12, "bold"))
         numero_doc_label.pack(anchor="w", pady=(0, 5))
 
-        numero_doc_entry = ctk.CTkEntry(form_frame,textvariable=numero_doc_var, placeholder_text="Ingrese el número de documento", height=35, font=("Arial", 12))
+        numero_doc_entry = ctk.CTkEntry(right_frame,textvariable=numero_doc_var, placeholder_text="Ingrese el número de documento", height=35, font=("Arial", 12))
         numero_doc_entry.pack(fill="x", pady=(0, 20))
 
         #campo de cumpleaños
-        fecha_nac_label = ctk.CTkLabel(form_frame, text="Cumpleaños", font=("Arial", 12, "bold"))
+        fecha_nac_label = ctk.CTkLabel(left_frame, text="Cumpleaños", font=("Arial", 12, "bold"))
         fecha_nac_label.pack(anchor="w", pady=(0, 5))
 
-        fecha_nac_entry = ctk.CTkEntry(form_frame, textvariable=fecha_nac_var, placeholder_text="Ingrese la fecha de nacimiento", height=35, font=("Arial", 12))
+        fecha_nac_entry = ctk.CTkEntry(left_frame, textvariable=fecha_nac_var, placeholder_text="Ingrese la fecha de nacimiento", height=35, font=("Arial", 12))
         fecha_nac_entry.pack(fill="x", pady=(0, 15))
 
         #campo de genero
-        genero_label = ctk.CTkLabel(form_frame, text="Género", font=("Arial", 12, "bold"))
+        genero_label = ctk.CTkLabel(right_frame, text="Género", font=("Arial", 12, "bold"))
         genero_label.pack(anchor="w", pady=(0, 5))
 
-        genero_entry = ctk.CTkEntry(form_frame, textvariable=genero_var, placeholder_text="Ingrese el genero", height=35, font=("Arial", 12))
+        genero_entry = ctk.CTkEntry(right_frame, textvariable=genero_var, placeholder_text="Ingrese el genero", height=35, font=("Arial", 12))
         genero_entry.pack(fill="x", pady=(0, 15))
 
         #campo de nacionalidad
-        nacionalidad_label = ctk.CTkLabel(form_frame, text="Nacionalidad", font=("Arial", 12, "bold"))
+        nacionalidad_label = ctk.CTkLabel(left_frame, text="Nacionalidad", font=("Arial", 12, "bold"))
         nacionalidad_label.pack(anchor="w", pady=(0, 5))
 
-        nacionalidad_entry = ctk.CTkEntry(form_frame, textvariable=nacionalidad_var, placeholder_text="Ingrese la nacionalidad", height=35, font=("Arial", 12))
+        nacionalidad_entry = ctk.CTkEntry(left_frame, textvariable=nacionalidad_var, placeholder_text="Ingrese la nacionalidad", height=35, font=("Arial", 12))
         nacionalidad_entry.pack(fill="x", pady=(0, 15))
 
         #campo de telefono
-        telefono_label = ctk.CTkLabel(form_frame, text="Teléfono:", font=("Arial", 12, "bold"))
+        telefono_label = ctk.CTkLabel(right_frame, text="Teléfono:", font=("Arial", 12, "bold"))
         telefono_label.pack(anchor="w", pady=(0, 5))
 
-        telefono_entry = ctk.CTkEntry(form_frame, textvariable=telefono_var, placeholder_text="Ingrese el teléfono", height=35, font=("Arial", 12))
+        telefono_entry = ctk.CTkEntry(right_frame, textvariable=telefono_var, placeholder_text="Ingrese el teléfono", height=35, font=("Arial", 12))
         telefono_entry.pack(fill="x", pady=(0, 15))
 
         #campo de email
-        email_label = ctk.CTkLabel(form_frame, text="Email:", font=("Arial", 12, "bold"))
+        email_label = ctk.CTkLabel(left_frame, text="Email:", font=("Arial", 12, "bold"))
         email_label.pack(anchor="w", pady=(0, 5))
 
-        email_entry = ctk.CTkEntry(form_frame, textvariable=email_var, placeholder_text="Ingrese el email", height=35, font=("Arial", 12) )
-        email_entry.pack(fill="x", pady=(0, 15))  # Empaqueta horizontalmente con padding
+        email_entry = ctk.CTkEntry(left_frame, textvariable=email_var, placeholder_text="Ingrese el email", height=35, font=("Arial", 12) )
+        email_entry.pack(fill="x", pady=(0, 15))  
 
-        #frame para los botones
-        button_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-        button_frame.pack(fill="x")
+        
 
         def guardar():
             #funcion para guardar datos del formulario
