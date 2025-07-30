@@ -248,6 +248,47 @@ class GestorClientes(ctk.CTkFrame):
         except Exception as e:
             return False, f"Error inesperado al validar email: {str(e)}"
 
+    def validar_email_unico(self, email, conn, cliente_actual = None):
+        #valida que el email sea unico
+        try:
+            cursor = conn.cursor()
+            
+            if cliente_actual:
+                # para edicion: verifica que no exista otro cliente con el mismo email
+                cursor.execute("SELECT COUNT(*) FROM cliente WHERE email = ? AND email != ?", (email, cliente_actual[8]))
+            else:
+                # para agregar: verifica que no exista ningún cliente con ese email
+                cursor.execute("SELECT COUNT(*) FROM cliente WHERE email = ?", (email,))
+            
+            count = cursor.fetchone()[0]
+            
+            if count > 0:
+                return False, "El correo electrónico ya existe en la base de datos"
+            return True, "Email válido"
+            
+        except sql.Error as e:
+            return False, f"Error al validar email: {e}"
+
+    def validar_doc_unico(self, numero_doc, conn, cliente_actual = None):
+        #valida que el numero del documento de identidad sea único.
+        try:
+            cursor = conn.cursor()
+
+            if cliente_actual:
+                #para edicion: verifica que no exista otro cliente con el mismo documento
+                cursor.execute("SELECT COUNT(*) FROM cliente WHERE numero_doc = ? AND numero_doc != ?", (numero_doc, cliente_actual[3]))
+            else:
+                #para agregar: verifica que no exista ningun cliente con el mismo documento
+                cursor.execute("SELECT COUNT(*) FROM cliente WHERE numero_doc = ?", (numero_doc,))
+            
+            count = cursor.fetchone()[0]
+
+            if count > 0:
+                return False, "El número de documento ya existe en la base de datos"
+            return True, "Documento válido"
+        except sql.Error as e:
+            return False, f"Error al validar documento: {e}"
+
     def agregar_cliente(self):
         #abre la ventana de dialogo para agrega un nuevo cliente
 
@@ -450,6 +491,20 @@ class GestorClientes(ctk.CTkFrame):
                 conn = sql.connect("base_datos.db")
                 cursor=conn.cursor()
 
+                 # validacion de correo unico
+                es_email_valido, mensaje_email = self.validar_email_unico(email, conn,self.cliente_actual if mode == "editar" else None)
+                if not es_email_valido:
+                    conn.close()
+                    messagebox.showerror("Error de validación", mensaje_email)
+                    return
+
+                # validacion de documento unico
+                es_doc_valido, mensaje_doc = self.validar_doc_unico(numero_doc, conn,self.cliente_actual if mode == "editar" else None)
+                if not es_doc_valido:
+                    conn.close()
+                    messagebox.showerror("Error de validación", mensaje_doc)
+                    return
+
                 if mode == "agregar": #si es para agregar cliente
                     cursor.execute("""
                     INSERT INTO cliente (nombres, apellidos, tipo_doc, numero_doc, fecha_nac, genero, nacionalidad, telefono, email)
@@ -468,6 +523,17 @@ class GestorClientes(ctk.CTkFrame):
                 conn.close()
                 dialog.destroy()
                 self.cargar_clientes()
+
+            except sql.IntegrityError as e:
+                if "UNIQUE constraint failed" in str(e):
+                    if numero_doc in str(e):
+                        messagebox.showerror("Error", "El número de documento ya existe en la base de datos")
+                    elif email in str(e):
+                        messagebox.showerror("Error", "El correo electrónico ya existe en la base de datos")
+                    else:
+                        messagebox.showerror("Error", str(e))
+                else:
+                    messagebox.showerror("Error", f"Error de integridad de datos: {e}")
 
             except sql.Error as e:
                 messagebox.showerror("Error", f"Error al guardar cliente: {e}")

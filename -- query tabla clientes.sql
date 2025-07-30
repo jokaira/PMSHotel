@@ -1,16 +1,16 @@
 -- SQLite
 -- Query por si se me borra la tabla "cliente"
 CREATE TABLE IF NOT EXISTS cliente(
-    id_cliente INTEGER PRIMARY KEY,
+    id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
     nombres TEXT NOT NULL,
     apellidos TEXT NOT NULL,
     tipo_doc TEXT NOT NULL,
-    numero_doc TEXT NOT NULL,
+    numero_doc TEXT NOT NULL UNIQUE,
     fecha_nac DATE,
     genero TEXT,
     nacionalidad TEXT,
     telefono TEXT,
-    email TEXT
+    email TEXT UNIQUE
 );
 
 INSERT INTO cliente (nombres, apellidos, tipo_doc, numero_doc, fecha_nac, genero, nacionalidad, telefono, email) VALUES
