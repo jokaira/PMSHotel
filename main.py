@@ -1,314 +1,207 @@
-# librerias de interfaz grafica
-import customtkinter as ctk
-from tkinter import ttk
+#librerias
+import customtkinter as ctk #UI
 
-#modulos de funcionamiento del sistema
-from gestor_clientes import GestorClientes #modulo de clientes
-from Main_Habitaciones import * #modulo de habitaciones
-from Calendario_de_Reserva import * #modulo de reservas
+#ajustes y funciones
+from settings import *
+import basedatos
 
-# configuracion del modo de apariencia y tema de colores
-ctk.set_appearance_mode("light") #modo claro
-ctk.set_default_color_theme("blue") #tema azul
+#módulos
+from dashboard import *
+from clientes import * 
+from habitaciones import *
+from reservas import *
 
-res_ventana = {"x": 1200, "y": 800} #variable de la resolución de la ventana principal
-
-
-class Main(ctk.CTk):
-    #clase principal que representa la ventana principal
+class App(ctk.CTk):
     def __init__(self):
-        super().__init__() #constructor
+        super().__init__(fg_color=CLARO)
 
-        #config basica de la ventana
-        self.title("PMS Hotel - Sistema de Gestión Hotelera") #titulo
-        self.geometry(f"{res_ventana['x']}x{res_ventana['y']}") #tamaño de ventana
-        self.resizable(True, True) #redimensionamiento
-        self.configure(bg="#f8f9fa") #fondo gris claro
+        ctk.set_appearance_mode('light')
+        self.title("PMS Hotel")
+        self.geometry(f'{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0')
+        # self.geometry(f'1220x768+0+0')
+        # self.attributes('-fullscreen', True) #para ponerlo en pantalla completa. No descomentar
 
-        # definición de estilos de los widgets
-        self.style = ttk.Style() #objeto estilo
-        self.style.theme_use("clam") #tema
-        
-        #colores de botones 
-        self.style.configure("TButton", #"themed button"
-                             foreground = "white", #texto blanco
-                             background = "#c0392b", #fondo rojo
-                             font = ("Arial", 12, "bold"), #arial tamaño 12 en negrita
-                             padding = (20,10)) #padding horizontal de 20, y vertical de 10
+        #metodo para activar el responsive
+        #TODO: configurar el responsive layout para cada uno
+        # SizeNotifier(self, {
+        #     300: self.crear_layout_1,
+        #     640: self.crear_layout_2,
+        #     900: self.crear_layout_3,
+        #     1024: self.crear_layout_4,
+        # })
 
-        #configuración de los estados del boton (hover y presionado)
-        self.style.map("TButton", #establece estilo dinámico (para cada estado del botón)
-                       background = [("active", "#e74c3c"), ("pressed", "#a93226")], #colores para hover (active) y para presionado (pressed)
-                       foreground = [("active", "#fff")]) #color del texto en hover
-        
-        #encabezados de las tablas
-        self.style.configure("Treeview.Heading", #este selecciona los encabezados
-                             background = "#c0392b", #fondo rojo
-                             foreground = "white", #letra blanca
-                             font = ("Arial", 11, "bold")) #arial tamaño 11 negrita
+        #inicia la verificacion de las tablas de la base de datos
+        basedatos.conectar_bd()
+        basedatos.verificar_tablas()
 
-        #filas de las tablas
-        self.style.configure("Treeview", #este selecciona las filas
-                             background = "#fff", #fondo de las filas
-                             fieldbackground = "#fff", #fondo de la tabla completa (incluyendo las filas vacías)
-                             font = ("Arial", 10), #arial tamaño 10
-                             rowheight = 30) #altura de 30px para las filas
+        #encabezado
+        Header(self)
 
-        #contenedor principal
-        self.main_container = ctk.CTkFrame(self, fg_color= "transparent") #frame con fondo transparente
-        self.main_container.pack(fill = "both", #para que se expanda en ambas direcciones (vertical y horizontal)
-                                 expand = True, #para que se expanda en todo el espacio
-                                 padx = 20, pady = 20) #padding
+        #contenedor de los módulos
+        self.main_frame = MainFrame(self, texto='')
 
-        #encabezado del programa
-        self.create_header() #metodo para crear el encabezado
+        #modulos
+        self.dashboard = None
+        self.clientes = None
+        self.habitaciones = None
+        self.reservas = None
 
-        #contenedor de la barra de navegacion lateral
-        self.content_frame = ctk.CTkFrame(self.main_container, fg_color = "transparent")
-        self.content_frame.pack(fill = "both", expand = True, pady = (20, 0)) #padding de 20 arriba y 0 abajo
+        #menu lateral con botones
+        self.sidebar = SideBar(self)
 
-        #barra de navegacion lateral
-        self.create_sidebar() #metodo para crear la barra lateral
+        self.btn_dashboard = self.sidebar.crear_boton_nav(BTN_HEAD[0], metodo=self.mostrar_dashboard)
+        self.btn_dashboard.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
 
-        #frame para el contenido principal
-        self.main_content = ctk.CTkFrame(self.content_frame, fg_color = "#fff", corner_radius = 15)
-        self.main_content.pack(side = "left", fill = "both", expand = True, padx = (20, 0))
+        self.btn_clientes = self.sidebar.crear_boton_nav(BTN_HEAD[1], metodo=self.mostrar_clientes)
+        self.btn_clientes.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
 
-        #inicialización de módulos
-        self.clientes = None #modulo de clientes
-        self.habitaciones = None #modulo de habitaciones
-        self.reservas = None #modulo de reservas
-        #TODO: agregar mas modulos
+        self.btn_habitaciones = self.sidebar.crear_boton_nav(BTN_HEAD[2], metodo=self.mostrar_habitaciones)
+        self.btn_habitaciones.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
 
-        #esto muestra el dashboard por defecto
-        self.show_dashboard() #metodo para mostrar el dashboard
-    
-    def create_header(self):
-        #crea encabezado con titulo y el branding, logo e info de la "empresa"
-        
-        #frame del encabezado con color rojo y esquinas redondeadas
-        header_frame = ctk.CTkFrame(self.main_container, 
-                                    fg_color = "#c0392b",
-                                    corner_radius = 15, #esquina con radio de 15px
-                                    height = 80) #altura de 80px
-        header_frame.pack(fill = "x", #se expandirá solo horizontalmente
-                          pady = (0, 20)) #padding superior de 0 e inferior de 20
-        header_frame.pack_propagate(False) #evita redimensionamiento por los widgets
+        self.btn_reservas = self.sidebar.crear_boton_nav(BTN_HEAD[3], metodo=self.mostrar_reservas)
+        self.btn_reservas.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
 
-        #titulo
-        title_label = ctk.CTkLabel(header_frame, 
-                                   text = "🏨 PMS Hotel", #ante falta de logo, se coloca un emoji
-                                   font = ("Arial", 28, "bold"), #arial tamaño 28 negrita
-                                   text_color = "white") #letra color blanco
-        title_label.pack(side = "left", #alineado a la izquierda
-                         padx = 30, pady = 20)
+        #cada vez que se agregue un módulo, hay que agregar su correspondiente botón y método
 
-        # subtitulo
-        subtitle_label = ctk.CTkLabel(header_frame, text = "Sistema de Gestión Hotelera", font = ("Arial", 14), text_color = "#f8f9fa")
-        subtitle_label.pack(side = "left", padx = (10, 0), #padding de 10px a la izquierda y 0 a la derecha
-                            pady = 20)
+        #dashboard por default
+        self.mostrar_dashboard()
 
-    def create_sidebar(self):
-        #crea la barra de navegacion lateral con los botones de los módulos
-
-        #frame de la barra lateral
-        sidebar_frame = ctk.CTkFrame(self.content_frame, fg_color = "#2c3e50", #fondo de color azul oscuro
-                                     corner_radius = 15, width = 250)
-        sidebar_frame.pack(side = "left", fill = "y", #se expande solo a lo vertical
-                           padx = (0, 20)) #padding de 0 a la izquiera y 20px a la derecha
-        sidebar_frame.pack_propagate(False)
-
-        #titulo de barra lateral
-        sidebar_title = ctk.CTkLabel(sidebar_frame, text = "Módulos", font = ("Arial", 18, "bold"), text_color= "white")
-        sidebar_title.pack(pady = (30, 20))
-
-        #definicion de estilo para los botones de navegacion
-        button_style = {
-            "fg_color": "transparent", #color del boton
-            "text_color": "white", #color del texto
-            "font": ("Arial", 14, "bold"),
-            "corner_radius": 10,
-            "height": 50, #altura del boton
-            "hover_color": "#34495e"
-        }
-
-        #boton de Dashboard
-        self.btn_dashboard = ctk.CTkButton(sidebar_frame, text = "📊 Dashboard", command = self.show_dashboard, **button_style)#aplica el estilo definido anteriormente
-        self.btn_dashboard.pack(fill = "x", padx = 20, pady = 5)
-
-        #boton de Gestor de Clientes
-        self.btn_clientes = ctk.CTkButton(sidebar_frame, text = "👥 Gestor de Clientes", command = self.abrir_gestor_clientes, **button_style)
-        self.btn_clientes.pack(fill = "x", padx = 20, pady = 5)
-
-        #boton de Gestor de Habitaciones
-        self.btn_habitaciones = ctk.CTkButton(sidebar_frame, text = "🏠 Gestor de Habitaciones", command = self.abrir_gestor_habitaciones, **button_style)
-        self.btn_habitaciones.pack(fill = "x", padx = 20, pady = 5)
-    
-        #boton de Gestor de Reservas
-        self.btn_reservas = ctk.CTkButton(sidebar_frame, text = "📅 Gestor de Reservas", command = self.abrir_gestor_reservas, **button_style)
-        self.btn_reservas.pack(fill = "x", padx = 20, pady = 5)
-
-        #espacio adicional al final de la barra
-        spacer = ctk.CTkFrame(sidebar_frame, fg_color = "transparent", height = 50)
-        spacer.pack(fill = "x", pady = 20)
-    
-    def clear_main_content(self):
-        #limpia el frame de contenido principal
-        #elimina todos los widgets
-        for widget in self.main_content.winfo_children(): #este metodo devuelve una lista con todos los widgets que estén dentro de ese contenedor
+    def limpiar_mainframe(self):
+        # limpia el frame que contiene los módulos
+        for widget in self.main_frame.modulos.winfo_children():
             widget.destroy()
 
-    def show_dashboard(self):
-        #muestra el dashboard con estadisticas, tarjetas y botones de accion rápida
+    def inactivar_botones(self):
+        self.btn_dashboard.configure(fg_color = 'transparent')
+        self.btn_clientes.configure(fg_color = 'transparent')
+        self.btn_habitaciones.configure(fg_color = 'transparent')
+        self.btn_reservas.configure(fg_color = 'transparent')
+    
+    def mostrar_dashboard(self):
+        self.limpiar_mainframe()
+        self.inactivar_botones()
+        self.main_frame.label_titulo.configure(text = BTN_HEAD[0])
+        self.btn_dashboard.configure(fg_color = '#34495e')
+        self.dashboard = Dashboard(self.main_frame.modulos)
 
-        self.clear_main_content() #limpia el frame del contenido principal
+    def mostrar_clientes(self):
+        self.limpiar_mainframe()
+        self.inactivar_botones()
+        self.main_frame.label_titulo.configure(text = BTN_HEAD[1])
+        self.btn_clientes.configure(fg_color = '#34495e')
+        self.clientes = GestorClientes(self.main_frame.modulos)
 
-        #frame del dashboard
-        dashboard_frame = ctk.CTkFrame(self.main_content, fg_color = "transparent")
-        dashboard_frame.pack(fill = "both", expand = True, padx = 30, pady = 30)
+    def mostrar_habitaciones(self):
+        self.limpiar_mainframe()
+        self.inactivar_botones()
+        self.main_frame.label_titulo.configure(text = BTN_HEAD[2])
+        self.btn_habitaciones.configure(fg_color = '#34495e')
+        self.habitaciones = GestorHabitaciones(self.main_frame.modulos)
 
-        #mensaje de bienvenida
-        welcome_label = ctk.CTkLabel(dashboard_frame,
-                                     text = "¡Bienvenido al Sistema de Gestión Hotelera!",
-                                     font = ("Arial", 24, "bold"),
-                                     text_color = "#2c3e50")
-        welcome_label.pack(pady = (0, 20))
+    def mostrar_reservas(self):
+        self.limpiar_mainframe()
+        self.inactivar_botones()
+        self.main_frame.label_titulo.configure(text = BTN_HEAD[3])
+        self.btn_reservas.configure(fg_color = '#34495e')
+        self.reservas = GestorReservas(self.main_frame.modulos)
 
-        #frame para las tarjetas de estadisticas
-        stats_frame = ctk.CTkFrame(dashboard_frame, fg_color= "transparent")
-        stats_frame.pack(fill = "x", pady = 20)
+class SizeNotifier: #para layout responsivo, NO TOCAR
+    def __init__(self, window, size_dict):
+        self.window = window
+        self.size_dict = {key: value for key, value in sorted(size_dict.items())}
+        self.current_min_size = None
 
-        #tarjetas de las estadisticas
-        self.create_stat_card(stats_frame, "👥 Clientes", 
-                              "150",#TODO: por el momento no tendrá un cálculo
-                              "#3498db", 0)
-        self.create_stat_card(stats_frame, "🏠 Habitaciones", 
-                              "45",
-                              "#e74c3c", 1)
-        self.create_stat_card(stats_frame, "📅 Reservas Activas", 
-                              "23",
-                              "#2ecc71", 2)
-        self.create_stat_card(stats_frame, "💰 Ingresos del Mes", 
-                              "$15,420",
-                              "#f39c12", 3)
+        self.window.bind('<Configure>', self.check_size)
+
+        window.update()
+
+        min_height = window.winfo_height()
+        min_width = list(self.size_dict)[0]
+        window.minsize(min_width, min_height)   
+    
+    def check_size(self, event):
+        if event.widget == self.window:
+            window_width = event.width
+            checked_size = None
+            
+            for min_size in self.size_dict:
+                delta = window_width - min_size
+                if delta >= 0:
+                    checked_size = min_size
+            
+            if checked_size != self.current_min_size:
+                self.current_min_size = checked_size
+                self.size_dict[self.current_min_size]()
+
+class Header(ctk.CTkFrame):
+    def __init__(self, master):
+        super().__init__(master = master, fg_color=PRIMARIO, corner_radius=0,
+                         height = 43)
+
+        self.place(x = 0, y = 0, relwidth = 1)
+        self.pack_propagate(False)
+
+        #texto encabezado
+        ctk.CTkLabel(self, 
+                     text='🏨 PMS Hotel · Sistema de Gestión Hotelera', 
+                     text_color=BLANCO,
+                     font = (FUENTE,TAMANO_TEXTO_DEFAULT,'bold'),
+                     ).pack(side='left', padx = 12)
+
+class SideBar(ctk.CTkFrame):
+    def __init__(self, master):
+        super().__init__(master = master, corner_radius=0, fg_color=OSCURO, 
+             width = 260)
         
-        #frame para acciones rápidas
-        actions_frame = ctk.CTkFrame(dashboard_frame, fg_color = "transparent")
-        actions_frame.pack(fill = "x", pady = 30)
+        self.place(x= 0, y = 42, relheight=1)
+        self.pack_propagate(False)
 
-        # creacion de titulo de acciones rapidas
-        actions_label = ctk.CTkLabel(
-            actions_frame,
-            text = "Acciones Rápidas",
-            font = ("Arial", 18, "bold"),
-            text_color = "#2c3e50"
-        )
-        actions_label.pack(pady = (0, 20))
-
-        #frame para botones de accion rápida
-        quick_actions = ctk.CTkFrame(actions_frame, fg_color = "transparent")
-        quick_actions.pack(fill = "x")
-
-        #definicion de estilo de los botones
-        quick_btn_style = {
-            "fg_color": "#c0392b",
-            "text_color": "white",
-            "font": ("Arial", 12, "bold"),
-            "corner_radius": 10,
-            "height": 40,
-            "hover_color": "#e74c3c"
-        }
-
-        #boton para agregar nuevo cliente
-        ctk.CTkButton(
-            quick_actions,
-            text = "➕ Nuevo Cliente",
-            command = self.abrir_gestor_clientes, #TODO: hay que crear o modificar funciones que directamente te lleve al gestor y abra el toplevel
-            **quick_btn_style
-        ).pack(side = "left", padx = (0, 10))
-
-        #boton para agregar nueva habitacion
-        ctk.CTkButton(
-            quick_actions,
-            text = "🏠 Nueva Habitación",
-            command = self.abrir_gestor_habitaciones, 
-            **quick_btn_style
-        ).pack(side = "left", padx = (0, 10))
-
-        #boton para agregar nueva reserva
-        ctk.CTkButton(
-            quick_actions,
-            text = "📅 Nueva Reserva",
-            command = self.abrir_gestor_reservas, #aqui el TODO no aplica
-            **quick_btn_style
-        ).pack(side = "left")
-
-    def create_stat_card(self, master, titulo, valor, color, columna):
-        #crea tarjeta de estadísticas
-        #argumentos:
-            # master: el que contendrá la tarjeta
-            # titulo: el titulo de la estadistica
-            # valor: el numero a mostrar
-            # color: el color de la tarjeta
-            # columna: el numero de la columna, por el momento no se usa
-        
-        #frame de cada tarjeta
-        card = ctk.CTkFrame(master, fg_color = color, corner_radius = 15, height = 120)
-        card.pack(side = "left", fill = "both", expand = True, padx = (0, 10))
-
-        #titulo de la tarjeta
-        title_label = ctk.CTkLabel(
-            card,
-            text = titulo,
-            font = ("Arial", 14, "bold"),
-            text_color = "white"
-        )
-        title_label.pack(pady = (20, 5))
-
-        #valor de la estadistica
-        value_label = ctk.CTkLabel(
-            card,
-            text = valor,
-            font = ("Arial", 24, "bold"),
-            text_color = "white"
-        )
-        value_label.pack()
-
-    def abrir_gestor_clientes(self):
-        #abre y muestra el modulo de gestión de clientes
-        self.clear_main_content()
-        self.clientes = GestorClientes(self.main_content)
-        self.clientes.pack(fill = "both", expand = True, padx = 20, pady = 20)
-
-    def atras_clientes(self): #esto es para cuando se le da a atras desde el gestor de clientes
-        if self.clientes:
-            self.clientes.pack_forget()
-        self.show_dashboard()
-
-    def abrir_gestor_habitaciones(self):
-        #abre y muestra el modulo de habitaciones
-        self.clear_main_content()
-        self.habitaciones = GestionDeHabitacionesApp(self.main_content)
-        self.habitaciones.pack(fill = "both", expand = True, padx = 20, pady = 20)
+        #titulo del menu lateral
+        ctk.CTkLabel(self, 
+                     text='Módulos', 
+                     text_color=BLANCO,
+                     font = (FUENTE, TAMANO_1, 'bold')
+                     ).pack(padx = (6+16,0+16), pady = (0+16,12+16), anchor = 'w')
     
-    def atras_habitaciones(self): #esto es pa cuando se le da a atras desde el gestor de habitaciones
-        if self.habitaciones:
-            self.habitaciones.pack_forget()
-        self.show_dashboard()
-    
-    def abrir_gestor_reservas(self):
-        #abre el modulo de reservas
-        self.clear_main_content()
-        self.reservas = CalendarioReservasApp(self.main_content)
-        self.reservas.pack(fill = "both", expand = True, padx = 20, pady = 20)
-        self.reservas.setup_ui()
-    
-    def atras_reservas(self): #esto es pa cuando se le da a atras desde el gestor de reservas
-        if self.reservas:
-            self.reservas.pack_forget()
-        self.show_dashboard()
+        self.nav_frame = ctk.CTkFrame(self, fg_color='transparent')
+        self.nav_frame.pack(fill='both', expand=True)
 
+    def crear_boton_nav(self, texto, metodo):
+        return ctk.CTkButton(
+            master = self.nav_frame,
+            text=texto,
+            text_color= BLANCO,
+            fg_color= '#34495e',
+            hover_color='#34495e',
+            corner_radius=8,
+            font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+            anchor = 'w',
+            command=metodo
+        )
 
-if __name__ == "__main__":
-    app = Main()
-    app.mainloop()
+class MainFrame(ctk.CTkFrame):
+    def __init__(self, master, texto):
+        super().__init__(master=master, fg_color='transparent')
+        self.place(x = 0, y = 42, relheight = 1, relwidth = 1)
+
+        self.rowconfigure(index=1, weight=1, uniform='b')
+        self.columnconfigure(index=0, weight=1, uniform='b')
+
+        self.titulo = ctk.CTkFrame(self, fg_color=PRIMARIO,corner_radius= 10, height = 39)
+        self.titulo.grid(row = 0, column = 0, sticky = 'nsew', padx = (16 + 260, 16), pady = (16,8))
+
+        self.label_titulo =ctk.CTkLabel(self.titulo, 
+                     text=texto,
+                     font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold'),
+                     text_color=BLANCO
+                     )
+        self.label_titulo.pack(side = 'left', padx = 16, pady = 6)
+
+        #contenedor de los módulos
+        self.modulos = ctk.CTkFrame(self, fg_color='transparent')
+        self.modulos.grid(row = 1, column = 0, sticky = 'nsew', padx = (16 + 260, 16), pady = (8,16+43))
+        self.modulos.pack_propagate(False)
+
+if __name__ == '__main__':
+    window = App()
+    window.mainloop()
