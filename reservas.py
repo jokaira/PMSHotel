@@ -580,4 +580,3 @@ class GestorReservas(ctk.CTkFrame):
                            pady=2,
                            fill=None,
                            )
-        

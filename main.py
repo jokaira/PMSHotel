@@ -108,30 +108,30 @@ class App(ctk.CTk):
 class SizeNotifier: #para layout responsivo, NO TOCAR
     def __init__(self, window, size_dict):
         self.window = window
-        self.size_dict = {key: value for key, value in sorted(size_dict.items())}
-        self.current_min_size = None
+    #     self.size_dict = {key: value for key, value in sorted(size_dict.items())}
+    #     self.current_min_size = None
 
-        self.window.bind('<Configure>', self.check_size)
+    #     self.window.bind('<Configure>', self.check_size)
 
-        window.update()
+    #     window.update()
 
-        min_height = window.winfo_height()
-        min_width = list(self.size_dict)[0]
-        window.minsize(min_width, min_height)   
+    #     min_height = window.winfo_height()
+    #     min_width = list(self.size_dict)[0]
+    #     window.minsize(min_width, min_height)   
     
-    def check_size(self, event):
-        if event.widget == self.window:
-            window_width = event.width
-            checked_size = None
+    # def check_size(self, event):
+    #     if event.widget == self.window:
+    #         window_width = event.width
+    #         checked_size = None
             
-            for min_size in self.size_dict:
-                delta = window_width - min_size
-                if delta >= 0:
-                    checked_size = min_size
+    #         for min_size in self.size_dict:
+    #             delta = window_width - min_size
+    #             if delta >= 0:
+    #                 checked_size = min_size
             
-            if checked_size != self.current_min_size:
-                self.current_min_size = checked_size
-                self.size_dict[self.current_min_size]()
+    #         if checked_size != self.current_min_size:
+    #             self.current_min_size = checked_size
+    #             self.size_dict[self.current_min_size]()
 
 class Header(ctk.CTkFrame):
     def __init__(self, master):
