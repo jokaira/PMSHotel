@@ -405,14 +405,14 @@ def insertar_datos_muestra():
 
             # Insertar Reservas
             cursor.execute("""
-            INSERT INTO reservas (numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email, fecha_entrada, fecha_salida, precio_por_noche, tipo_reserva, checked_in, checked_out) VALUES
-            ('101', 'Doble', 1, 'María Pérez', 'maria@example.com', date('now'), date('now', '+2 days'), 80.00, 'Individual', 1, 0),
-            ('102', 'Individual', 2, 'Juan Gómez', 'juan@example.com', date('now'), date('now', '+1 day'), 50.00, 'Individual', 1, 0),
-            ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@example.com', date('now', '+1 day'), date('now', '+3 days'), 150.00, 'Corporativa', 0, 0),
-            ('301', 'Doble', 4, 'Carlos López', 'carlos@example.com', date('now', '+2 days'), date('now', '+4 days'), 80.00, 'Individual', 0, 0),
-            ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@example.com', date('now', '+5 days'), date('now', '+7 days'), 300.00, 'Corporativa', 0, 0),
-            ('203', 'Suite', 6, 'Roberto Fernández', 'roberto@example.com', date('now', '-1 day'), date('now', '+1 day'), 150.00, 'Individual', 1, 0),
-            ('103', 'Individual', 7, 'Carmen García', 'carmen@example.com', date('now', '+10 days'), date('now', '+12 days'), 50.00, 'Individual', 0, 0);
+            INSERT INTO reservas (numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email, fecha_entrada, fecha_salida, precio_por_noche, tipo_reserva, checked_in, checked_out, estado) VALUES
+            ('101', 'Doble', 1, 'María Pérez', 'maria@example.com', date('now'), date('now', '+2 days'), 80.00, 'Individual', 1, 0, 'En curso'),
+            ('102', 'Individual', 2, 'Juan Gómez', 'juan@example.com', date('now'), date('now', '+1 day'), 50.00, 'Individual', 1, 0, 'En curso'),
+            ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@example.com', date('now', '+1 day'), date('now', '+3 days'), 150.00, 'Corporativa', 0, 0, 'Pendiente'),
+            ('301', 'Doble', 4, 'Carlos López', 'carlos@example.com', date('now', '+2 days'), date('now', '+4 days'), 80.00, 'Individual', 0, 0, 'Pendiente'),
+            ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@example.com', date('now', '+5 days'), date('now', '+7 days'), 300.00, 'Corporativa', 0, 0, 'Pendiente'),
+            ('203', 'Suite', 6, 'Roberto Fernández', 'roberto@example.com', date('now', '-1 day'), date('now', '+1 day'), 150.00, 'Individual', 1, 0, 'En curso'),
+            ('103', 'Individual', 7, 'Carmen García', 'carmen@example.com', date('now', '+10 days'), date('now', '+12 days'), 50.00, 'Individual', 0, 0, 'Pendiente');
             """)
 
             # Insertar Walk-ins
@@ -643,6 +643,45 @@ def kpi_alojamiento(): #retorna la cantidad de habitaciones ocupadas y la cantid
             #[0] = un string descriptivo que dice "Personas alojadas hoy"
             #[1] = la cantidad de habitaciones ocupadas
             #[2] = la cantidad de personas alojadas en el día de hoy
+        except sql.Error as e:
+            print(f'Error al calcular alojamiento: {e}')
+        finally:
+            conn.close()
+
+def total_checkin(): #retorna el total de checkin del dia de hoy
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT COUNT(*) as total_checkins_programados_hoy
+            FROM reservas 
+            WHERE fecha_entrada = date('now') 
+            AND checked_in = 0 
+            AND checked_out = 0;
+            """)
+            resultado = cursor.fetchone()
+            return resultado[0] if resultado[0] is not None else 0
+        except sql.Error as e:
+            print(f'Error al calcular alojamiento: {e}')
+        finally:
+            conn.close()
+
+def ingresos_reservas(): #retorna el total de ingresos de reservas del mes
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT 
+                SUM(monto) as total_ingresos_reservas_mes
+            FROM ingresos 
+            WHERE tipo_ingreso = 'reserva' 
+            AND estado_pago = 'Completado'
+            AND strftime('%Y-%m', fecha_pago) = strftime('%Y-%m', date('now'));
+            """)
+            resultado = cursor.fetchone()
+            return resultado[0] if resultado[0] is not None else 0
         except sql.Error as e:
             print(f'Error al calcular alojamiento: {e}')
         finally:

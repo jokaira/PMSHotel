@@ -77,12 +77,21 @@ def TIPOS_HABITACIONES(): return basedatos.obtener_tipos_habitaciones()
 #Reservas
 def KPI_RESERVAS(): return {
     'reservas': {'titulo': '📅 Reservas Activas', 
-                 'cantidad': basedatos.reservas_activas() if basedatos.reservas_activas() is not None else 0, 
+                 'cantidad': basedatos.reservas_activas(), 
                  'subtitulo': 'Próximas', 
                  'color': AZUL, 'col': 0},
-    'hab_ocup': {'titulo': '🏠 Habitaciones Ocupadas', 'cantidad': 0, 'subtitulo': 'Hoy', 'color': ROJO, 'col': 1},
-    'checkin': {'titulo': '✅ Check-ins Hoy', 'cantidad': 0, 'subtitulo': 'Pendientes', 'color': VERDE2, 'col': 2},
-    'ingresos': {'titulo': '💰 Ingresos Reservas', 'cantidad': 0, 'subtitulo': 'Este mes', 'color': MAMEY, 'col': 3},
+    'hab_ocup': {'titulo': '🏠 Habitaciones Ocupadas', 
+                 'cantidad': basedatos.kpi_alojamiento()[1], 
+                 'subtitulo': 'Hoy', 
+                 'color': ROJO, 'col': 1},
+    'checkin': {'titulo': '✅ Check-ins Hoy', 
+                'cantidad': basedatos.total_checkin(), 
+                'subtitulo': 'Pendientes', 
+                'color': VERDE2, 'col': 2},
+    'ingresos': {'titulo': '💰 Ingresos Reservas', 
+                 'cantidad': f'${basedatos.ingresos_reservas():,.2f}', 
+                 'subtitulo': 'Este mes', 
+                 'color': MAMEY, 'col': 3},
 }
 
 ENCABEZADOS_RESERVAS = ['ID', '🏠 Hab.', '👤 Cliente', '📧 Email', '📅 Entrada', '📅 Salida', '👥 Personas Alojadas','💰 Total', '✅ Estado']
