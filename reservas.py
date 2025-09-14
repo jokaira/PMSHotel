@@ -7,57 +7,101 @@ class GestorReservas(ctk.CTkFrame):
         super().__init__(master = master, fg_color='transparent')
         self.pack(fill = 'both', expand = True)
 
-        self.rowconfigure(index=0, weight=0, minsize=109)
-        self.rowconfigure(index=1, weight=0)
-        self.columnconfigure(index=(0,1,2,3), weight=1, uniform='c')
-
         #kpi de reservas
-        crear_tarjetas_kpi(master=self, dict=KPI_RESERVAS())
+        self.kpis = ctk.CTkFrame(master=self, fg_color='transparent', corner_radius=0)
+        self.kpis.pack(anchor = 'n',fill = 'x')
 
-        #pestañas con sus ventanitas
-        self.opciones_reservas()
-
-    def opciones_reservas(self):
-        tabview = ctk.CTkTabview(master=self, 
-                                 fg_color='transparent',
-                                 border_color=GRIS_CLARO3, 
-                                 border_width=1, 
-                                 segmented_button_fg_color=CLARO,
-                                 segmented_button_selected_color=AZUL_CLARO,
-                                 segmented_button_unselected_color=GRIS_CLARO4,
-                                 segmented_button_selected_hover_color=AZUL2,
-                                 segmented_button_unselected_hover_color=GRIS_CLARO3,
-                                 text_color=OSCURO
-                                 )
-        tabview.grid(row = 1, column = 0, columnspan = 4, sticky = 'nsew')
+        self.kpis.rowconfigure(index=0, weight=0, minsize=109)
+        self.kpis.rowconfigure(index=1, weight=0)
+        self.kpis.columnconfigure(index=(0,1,2,3), weight=1, uniform='c')
+        crear_tarjetas_kpi(master=self.kpis, dict=KPI_RESERVAS())
 
         #pestañas
-        self.tab1 = tabview.add('➕ Nueva Reserva')
-        self.tab2 = tabview.add('🔍 Buscar Disponibilidad')
-        self.tab3 = tabview.add('📋 Gestionar Reservas')
-        self.tab4 = tabview.add('📚 Historial')
-        # self.tab5 = tabview.add('📅 Vista Calendario') #TODO:posible mejora, agregar el asunto de la visualización por calendario
-        tabview.set('➕ Nueva Reserva')
+        self.contenedor_pestanas = ctk.CTkFrame(master=self, fg_color='transparent')
+        self.contenedor_pestanas.pack(anchor = 'n',fill = 'x', pady = (0,10))
+        self.boton_pestanas(master=self.contenedor_pestanas)
+
+        self.reservas = ctk.CTkFrame(master=self, fg_color='transparent', border_color=GRIS_CLARO3, corner_radius=10, border_width=0)
+        self.reservas.pack(anchor = 'n', fill = 'x')
 
         self.nueva_reserva()
-        self.buscar_disponibilidad()
-        self.gestionar_reservas()
-        self.historial_reservas()
+
+    def boton_pestanas(self, master):
+            self.btn_nueva = ctk.CTkButton(master=master, 
+                          text= '➕ Nueva Reserva',
+                          fg_color=GRIS_CLARO,
+                          hover_color=GRIS,
+                          command= self.nueva_reserva,
+                          text_color=OSCURO,
+                          font = (FUENTE,TAMANO_TEXTO_DEFAULT), 
+                          height=44,
+                          corner_radius=10
+                          )
+            self.btn_nueva.pack(side ='left')
+
+            self.btn_disp = ctk.CTkButton(master=master, 
+                          text= '🔍 Buscar Disponibilidad',
+                          fg_color=GRIS_CLARO,
+                          hover_color=GRIS,
+                          command= self.buscar_disponibilidad,
+                          text_color=OSCURO,
+                          font = (FUENTE,TAMANO_TEXTO_DEFAULT), 
+                          height=44,
+                          corner_radius=10
+                          )
+            self.btn_disp.pack(side ='left', padx = (10,5))
+
+            self.btn_gest = ctk.CTkButton(master=master, 
+                          text= '📋 Gestionar Reservas Activas',
+                          fg_color=GRIS_CLARO,
+                          hover_color=GRIS,
+                          command= self.gestionar_reservas,
+                          text_color=OSCURO,
+                          font = (FUENTE,TAMANO_TEXTO_DEFAULT), 
+                          height=44,
+                          corner_radius=10
+                          )
+            self.btn_gest.pack(side ='left', padx = 5)
+
+            self.btn_historial = ctk.CTkButton(master=master, 
+                          text= '📚 Historial',
+                          fg_color=GRIS_CLARO,
+                          hover_color=GRIS,
+                          command= self.historial_reservas,
+                          text_color=OSCURO,
+                          font = (FUENTE,TAMANO_TEXTO_DEFAULT), 
+                          height=44,
+                          corner_radius=10
+                          )
+            self.btn_historial.pack(side ='left', padx = 5)
     
     def nueva_reserva(self):
-        ctk.CTkLabel(master=self.tab1, 
+        for widget in self.reservas.winfo_children():
+            widget.destroy()
+
+        self.btn_nueva.configure(fg_color = AZUL, hover_color = AZUL,text_color = BLANCO) 
+
+        self.btn_disp.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.btn_gest.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.btn_historial.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.reservas.configure(border_width = 1)
+
+        ctk.CTkLabel(master=self.reservas, 
                      text= '📝 Crear Nueva Reserva',
                      text_color=PRIMARIO,
                      font = (FUENTE, TAMANO_1, 'bold')
                      ).pack(pady = 6, padx = 12, anchor = 'w')
   
-        ctk.CTkLabel(master=self.tab1, 
+        ctk.CTkLabel(master=self.reservas, 
                      text= '👤 Cliente',
                      text_color=OSCURO,
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT)
                      ).pack(anchor = 'w', pady = 6, padx = 12)
         
-        frame_buscador = ctk.CTkFrame(self.tab1, fg_color='transparent')
+        frame_buscador = ctk.CTkFrame(self.reservas, fg_color='transparent')
         frame_buscador.pack(fill = 'x', expand = True)
         
         ctk.CTkEntry(master=frame_buscador,
@@ -86,7 +130,7 @@ class GestorReservas(ctk.CTkFrame):
                             corner_radius=10,
                             ).pack(side = 'left', padx = (0,5))
 
-        frame_datos_reserva = ctk.CTkFrame(self.tab1, fg_color='transparent')
+        frame_datos_reserva = ctk.CTkFrame(self.reservas, fg_color='transparent')
         frame_datos_reserva.pack(fill = 'x', expand = True)
         frame_datos_reserva.columnconfigure(index=(0,1,2,3,4,5,6,7), weight=1, uniform='z')
         frame_datos_reserva.rowconfigure(index=(0,1,2), weight=1, uniform='z')
@@ -272,7 +316,7 @@ class GestorReservas(ctk.CTkFrame):
                      ).grid(row = 2, column = 5, sticky = 'w')
         
         #frame de resumen de reserva
-        resumen_reserva = ctk.CTkFrame(master=self.tab1, fg_color=AZUL_CLARO, corner_radius=8, width= 500)
+        resumen_reserva = ctk.CTkFrame(master=self.reservas, fg_color=AZUL_CLARO, corner_radius=8, width= 500)
         resumen_reserva.pack(anchor = 'w', pady = (8,0))
 
         ctk.CTkLabel(master=resumen_reserva, 
@@ -288,7 +332,7 @@ class GestorReservas(ctk.CTkFrame):
                      ).pack(anchor = 'w', padx = 18)
 
         #botones de accion
-        btn_frame = ctk.CTkFrame(self.tab1, fg_color="transparent")
+        btn_frame = ctk.CTkFrame(self.reservas, fg_color="transparent")
         btn_frame.pack(fill = 'x', expand = True, padx = 12, pady = 12)
 
         btn_disponibilidad = Boton(master=btn_frame,
@@ -317,14 +361,27 @@ class GestorReservas(ctk.CTkFrame):
                            )
 
     def buscar_disponibilidad(self):
-        ctk.CTkLabel(master=self.tab2, 
+        for widget in self.reservas.winfo_children():
+            widget.destroy()
+
+        self.btn_disp.configure(fg_color = AZUL, hover_color = AZUL,text_color = BLANCO) 
+
+        self.btn_nueva.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.btn_gest.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.btn_historial.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.reservas.configure(border_width = 1)
+
+        ctk.CTkLabel(master=self.reservas, 
                      text= '🔍 Buscar Disponibilidad de Habitaciones',
                      text_color=PRIMARIO,
                      font = (FUENTE, TAMANO_1, 'bold')
                      ).pack(pady = 6, padx = 12, anchor = 'w')
         
         #frame para datos de busqueda
-        datos_busqueda = ctk.CTkFrame(master=self.tab2, fg_color='transparent')
+        datos_busqueda = ctk.CTkFrame(master=self.reservas, fg_color='transparent')
         datos_busqueda.pack(fill = 'x', expand = True, padx = 0, pady = 0)
         datos_busqueda.columnconfigure(index=(0,1,2,3), weight=1, uniform='m')
 
@@ -399,7 +456,7 @@ class GestorReservas(ctk.CTkFrame):
                         ).grid(row = 1, column = 3, sticky = 'nsew')
         
         #botones de accion
-        btn_frame = ctk.CTkFrame(self.tab2, fg_color="transparent")
+        btn_frame = ctk.CTkFrame(self.reservas, fg_color="transparent")
         btn_frame.pack(fill = 'x', expand = True, padx = 12)
 
         btn_disponibilidad = Boton(master=btn_frame,
@@ -419,17 +476,17 @@ class GestorReservas(ctk.CTkFrame):
                            )
         
         # separador
-        separador = ctk.CTkFrame(master=self.tab2, height=2, fg_color=GRIS_CLARO3)
+        separador = ctk.CTkFrame(master=self.reservas, height=2, fg_color=GRIS_CLARO3)
         separador.pack(fill="x", pady=10)
         
-        ctk.CTkLabel(master=self.tab2, 
+        ctk.CTkLabel(master=self.reservas, 
                      text= '🏠 Habitaciones Disponibles',
                      text_color=OSCURO,
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
                      ).pack(anchor = 'w', pady = 12)
         
         #frame para mostrar habitaciones disponibles
-        hab_disponibles = ctk.CTkFrame(master = self.tab2, border_color=GRIS_CLARO, border_width=1, corner_radius=10, fg_color=GRIS_CLARO3)
+        hab_disponibles = ctk.CTkFrame(master = self.reservas, border_color=GRIS_CLARO, border_width=1, corner_radius=10, fg_color=GRIS_CLARO3)
         hab_disponibles.pack(fill = 'both', expand = True, padx = 15, pady = (0,15))
         hab_disponibles.pack_propagate(False)
 
@@ -442,26 +499,52 @@ class GestorReservas(ctk.CTkFrame):
         aviso_selec.pack(fill = 'both', expand = True, padx = 20, pady = 20)
 
     def gestionar_reservas(self):
+        for widget in self.reservas.winfo_children():
+            widget.destroy()
+
+        self.btn_gest.configure(fg_color = AZUL, hover_color = AZUL,text_color = BLANCO) 
+
+        self.btn_nueva.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.btn_disp.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.btn_historial.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.reservas.configure(border_width = 0)
+
         #barra búsqueda
-        self.barra_busqueda(master=self.tab3)
+        self.barra_busqueda(master=self.reservas)
 
          # separador
-        separador = ctk.CTkFrame(master=self.tab3, height=2, fg_color=GRIS_CLARO3)
+        separador = ctk.CTkFrame(master=self.reservas, height=2, fg_color=GRIS_CLARO3)
         separador.pack(fill="x", pady=10)
 
         #tabla de reservas
-        self.tabla_reservas(master=self.tab3)
+        self.tabla_reservas(master=self.reservas)
 
     def historial_reservas(self):
+        for widget in self.reservas.winfo_children():
+            widget.destroy()
+
+        self.btn_historial.configure(fg_color = AZUL, hover_color = AZUL,text_color = BLANCO) 
+
+        self.btn_nueva.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.btn_disp.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.btn_gest.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+
+        self.reservas.configure(border_width = 0)
+
         #barra búsqueda
-        self.barra_busqueda(master=self.tab4)
+        self.barra_busqueda(master=self.reservas)
 
          # separador
-        separador = ctk.CTkFrame(master=self.tab4, height=2, fg_color=GRIS_CLARO3)
+        separador = ctk.CTkFrame(master=self.reservas, height=2, fg_color=GRIS_CLARO3)
         separador.pack(fill="x", pady=10)
 
         #tabla de reservas
-        self.tabla_reservas(master=self.tab4)
+        self.tabla_reservas(master=self.reservas)
 
     def barra_busqueda(self, master):
         contenedor = ctk.CTkFrame(master=master, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=12, height=62)

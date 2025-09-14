@@ -18,7 +18,7 @@ class GestorHabitaciones(ctk.CTkFrame):
         #pestañas
         self.contenedor_pestanas = ctk.CTkFrame(master=self, fg_color='transparent')
         self.contenedor_pestanas.pack(anchor = 'n',fill = 'x', expand = True, pady = (0,10))
-        self.boton_pestañas(master=self.contenedor_pestanas)
+        self.boton_pestanas(master=self.contenedor_pestanas)
 
         self.habitaciones = ctk.CTkFrame(master=master, fg_color='transparent')
         self.habitaciones.pack(anchor = 'n',fill = 'x')
@@ -26,7 +26,7 @@ class GestorHabitaciones(ctk.CTkFrame):
         #gestionar habitaciones
         self.gestionar_habitaciones()
 
-    def boton_pestañas(self, master):
+    def boton_pestanas(self, master):
             self.btn_gest = ctk.CTkButton(master=master, 
                           text= '🏠 Gestionar Habitaciones',
                           fg_color=GRIS_CLARO,
