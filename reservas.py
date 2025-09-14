@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from settings import *
 from func_clases import *
+from datetime import datetime
 
 class GestorReservas(ctk.CTkFrame):
     def __init__(self, master):
@@ -9,6 +10,15 @@ class GestorReservas(ctk.CTkFrame):
 
         #data
         self.cliente_actual = None
+        self.fecha_entrada = ctk.StringVar()
+        self.fecha_salida = ctk.StringVar()
+        self.tipo_habitacion = ctk.StringVar()
+        self.acompanantes = ctk.IntVar()
+        self.habitacion = ctk.StringVar()
+        self.precio = ctk.DoubleVar()
+        self.notas = ctk.StringVar()
+        self.gastos_adicionales = ctk.DoubleVar()
+        self.descuento = ctk.IntVar()
 
         #kpi de reservas
         self.kpis = ctk.CTkFrame(master=self, fg_color='transparent', corner_radius=0)
@@ -86,6 +96,21 @@ class GestorReservas(ctk.CTkFrame):
         self.btn_gest.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_historial.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.reservas.configure(border_width = 1)
+
+        #tracing
+
+        # Tipo de habitación
+        self.tipo_habitacion.trace_add("write", lambda *args: mostrar_resumen())
+
+        # Fecha de entrada / salida
+        self.fecha_entrada.trace_add("write", lambda *args: mostrar_resumen())
+        self.fecha_salida.trace_add("write", lambda *args: mostrar_resumen())
+
+        # Otros campos opcionales
+        self.acompanantes.trace_add("write", lambda *args: mostrar_resumen())
+        self.habitacion.trace_add("write", lambda *args: mostrar_resumen())
+        self.gastos_adicionales.trace_add("write", lambda *args: mostrar_resumen())
+        self.descuento.trace_add("write", lambda *args: mostrar_resumen())
 
         ctk.CTkLabel(master=self.reservas, 
                      text= '📝 Crear Nueva Reserva',
@@ -185,6 +210,7 @@ class GestorReservas(ctk.CTkFrame):
             ctk.CTkButton(master=cliente_seleccionado, text='Cambiar', text_color=CLARO, font=(FUENTE, 12), fg_color=PRIMARIO, hover_color=ROJO, width=50, command=lambda f = frame_cliente: limpiar_cliente(f)).place(relx = 0.98, rely = 0.5, anchor = 'e')
 
             self.cliente_actual = cliente
+            mostrar_resumen()
 
         def limpiar_cliente(frame):
             for w in frame.winfo_children():
@@ -201,6 +227,7 @@ class GestorReservas(ctk.CTkFrame):
                      ).grid(row = 0, column = 2, sticky = 'w', padx = 5)
 
         fecha_entrada_entry = CTkDatePicker(master=frame_datos_reserva)
+        fecha_entrada_entry.date_entry.configure(textvariable = self.fecha_entrada)
         fecha_entrada_entry.grid(row = 0, column = 3, sticky = 'nsew')
         fecha_entrada_entry.set_date_format('%d-%m-%Y')
         fecha_entrada_entry.set_localization('es_ES')
@@ -214,6 +241,7 @@ class GestorReservas(ctk.CTkFrame):
                      ).grid(row = 0, column = 4, sticky = 'w', padx = 5)
         
         fecha_salida_entry = CTkDatePicker(master=frame_datos_reserva)
+        fecha_salida_entry.date_entry.configure(textvariable = self.fecha_salida)
         fecha_salida_entry.grid(row = 0, column = 5, sticky = 'nsew')
         fecha_salida_entry.set_date_format('%d-%m-%Y')
         fecha_salida_entry.set_localization('es_ES')
@@ -226,8 +254,27 @@ class GestorReservas(ctk.CTkFrame):
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT)
                      ).grid(row = 0, column = 6, sticky = 'w', padx = 5)
         
+        #obtener tipos de habitacion en la base de datos
+        tipos_hab = [row[1] for row in basedatos.obtener_tipos_habitaciones()]
+        
+        #actualizar cada vez q cambia el tipo
+        def actualizar_habitaciones(opcion):
+            habitaciones = basedatos.hab_por_tipo(opcion.strip())
+            if habitaciones:
+                #rellenar combobox
+                valores = ['Asignación automática'] + [f"{hab[1]}, {hab[4]}" for hab in habitaciones]
+                combo_habitaciones.configure(values = valores)
+
+                precio = basedatos.precio_por_tipo(opcion.strip())
+                if precio:
+                    self.precio.set(precio)
+            else:
+                combo_habitaciones.configure(values = [''])
+                self.precio.set(0.0) 
+
         ctk.CTkComboBox(master=frame_datos_reserva,
-                        values = ['Cualquier tipo', 'Individual', 'Doble', 'Suite'],#TODO: atarlo a la base de datos
+                        values = tipos_hab,
+                        variable= self.tipo_habitacion,
                         corner_radius=8,
                         button_color=GRIS_CLARO,
                         button_hover_color=GRIS,
@@ -238,58 +285,38 @@ class GestorReservas(ctk.CTkFrame):
                         font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                         dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                         border_color= GRIS_CLARO2,
-                        border_width=1, height=35
+                        border_width=1, height=35,
+                        command=actualizar_habitaciones
                         ).grid(row = 0, column = 7, sticky = 'ew')
-        
-        #Tipo de reserva
-        ctk.CTkLabel(master=frame_datos_reserva, 
-                     text= '👥 Tipo de Reserva',
-                     text_color=OSCURO,
-                     font = (FUENTE, TAMANO_TEXTO_DEFAULT)
-                     ).grid(row = 1, column = 0, sticky = 'w', padx = 5)
-        
-        ctk.CTkComboBox(master=frame_datos_reserva,
-                        values = ['Individual', 'Grupal', 'Corporativa'],#TODO: atarlo a la base de datos
-                        corner_radius=8,
-                        button_color=GRIS_CLARO,
-                        button_hover_color=GRIS,
-                        dropdown_fg_color=CLARO,
-                        dropdown_hover_color=GRIS_CLARO,
-                        dropdown_text_color=OSCURO,
-                        text_color=OSCURO,
-                        font=(FUENTE, TAMANO_TEXTO_DEFAULT),
-                        dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
-                        border_color= GRIS_CLARO2,
-                        border_width=1, height=35
-                        ).grid(row = 1, column = 1, sticky = 'ew')
         
         #acompañantes
         ctk.CTkLabel(master=frame_datos_reserva, 
                      text= '👥 Acompañantes',
                      text_color=OSCURO,
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT)
-                     ).grid(row = 1, column = 2, sticky = 'w', padx = 5)
+                     ).grid(row = 1, column = 0, sticky = 'w', padx = 5)
         
         ctk.CTkEntry(master=frame_datos_reserva,
                      placeholder_text='cantidad de personas',
                      placeholder_text_color=MUTE,
+                     textvariable=self.acompanantes,
                      corner_radius=8,
                      text_color=OSCURO,
                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                      border_color= GRIS_CLARO2,
                      border_width=1, height=35,
-                     ).grid(row = 1, column = 3, sticky = 'w')
+                     ).grid(row = 1, column = 1, sticky = 'w')
         
         #Habitación específica
         ctk.CTkLabel(master=frame_datos_reserva, 
                      text= '🏠 Habitación Específica',
                      text_color=OSCURO,
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT)
-                     ).grid(row = 1, column = 4, sticky = 'w', padx = 5)
+                     ).grid(row = 1, column = 2, sticky = 'w', padx = 5)
         
-        ctk.CTkComboBox(master=frame_datos_reserva,
-                        values = ['Asignación automática', '101 (Suite)', '102 (Doble)'],#TODO: atarlo a la base de datos
+        combo_habitaciones = ctk.CTkComboBox(master=frame_datos_reserva,
                         corner_radius=8,
+                        variable=self.habitacion,
                         button_color=GRIS_CLARO,
                         button_hover_color=GRIS,
                         dropdown_fg_color=CLARO,
@@ -300,49 +327,53 @@ class GestorReservas(ctk.CTkFrame):
                         dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                         border_color= GRIS_CLARO2,
                         border_width=1, height=35
-                        ).grid(row = 1, column = 5, sticky = 'ew')
+                        )
+        combo_habitaciones.grid(row = 1, column = 3, sticky = 'ew')
         
         #precio por noche
         ctk.CTkLabel(master=frame_datos_reserva, 
-                     text= '💰 Precio por Noche',
+                     text= '💰 Precio por Noche ($)',
                      text_color=OSCURO,
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT)
-                     ).grid(row = 1, column = 6, sticky = 'w', padx = 5)
+                     ).grid(row = 1, column = 4, sticky = 'w', padx = 5)
         
         ctk.CTkEntry(master=frame_datos_reserva,
                      placeholder_text='0.00',
                      placeholder_text_color=MUTE,
+                     textvariable=self.precio,
                      corner_radius=8,
                      text_color=OSCURO,
                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                      border_color= GRIS_CLARO2,
                      border_width=1, height=35,
                      state='disabled'
-                     ).grid(row = 1, column = 7, sticky = 'w')
+                     ).grid(row = 1, column = 5, sticky = 'w')
         
         #requerimientos
         ctk.CTkLabel(master=frame_datos_reserva, 
                      text= '📝 Notas Especiales',
-                     text_color=OSCURO,
+                                          text_color=OSCURO,
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT)
                      ).grid(row = 2, column = 0, sticky = 'w', padx = 5)
         
-        ctk.CTkTextbox(master=frame_datos_reserva,
+        ctk.CTkEntry(master=frame_datos_reserva,
                      corner_radius=8,
                      text_color=OSCURO,
                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                      border_color= GRIS_CLARO2,
                      border_width=1, height=35,
-                     ).grid(row = 2, rowspan = 2, column = 1, sticky = 'nsew')
+                     textvariable=self.notas
+                     ).grid(row = 2, rowspan = 2, column = 1, sticky = 'w')
         
         #gastos adicionales
         ctk.CTkLabel(master=frame_datos_reserva, 
-                     text= '💰 Gastos Adicionales',
+                     text= '💰 Gastos Adicionales ($)',
                      text_color=OSCURO,
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT)
                      ).grid(row = 2, column = 2, sticky = 'w', padx = 5)
         
         ctk.CTkEntry(master=frame_datos_reserva,
+                     textvariable=self.gastos_adicionales,
                      placeholder_text='0.00',
                      placeholder_text_color=MUTE,
                      corner_radius=8,
@@ -350,17 +381,17 @@ class GestorReservas(ctk.CTkFrame):
                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                      border_color= GRIS_CLARO2,
                      border_width=1, height=35,
-                     state='disabled'
                      ).grid(row = 2, column = 3, sticky = 'w')
         
         #descuento
         ctk.CTkLabel(master=frame_datos_reserva, 
-                     text= '⬇️ Descuento',
+                     text= '⬇️ Descuento (%)',
                      text_color=OSCURO,
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT)
                      ).grid(row = 2, column = 4, sticky = 'w', padx = 5)
         
         ctk.CTkEntry(master=frame_datos_reserva,
+                     textvariable=self.descuento,
                      placeholder_text='0.00',
                      placeholder_text_color=MUTE,
                      corner_radius=8,
@@ -368,7 +399,6 @@ class GestorReservas(ctk.CTkFrame):
                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                      border_color= GRIS_CLARO2,
                      border_width=1, height=35,
-                     state='disabled'
                      ).grid(row = 2, column = 5, sticky = 'w')
         
         #frame de resumen de reserva
@@ -381,11 +411,73 @@ class GestorReservas(ctk.CTkFrame):
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
                      ).pack(anchor = 'w', padx = 18)
         
-        ctk.CTkLabel(master=resumen_reserva, 
+        completar = ctk.CTkLabel(master=resumen_reserva, 
                      text= 'Complete los datos para ver el resumen',
                      text_color=OSCURO,
                      font = (FUENTE, TAMANO_TEXTO_DEFAULT)
-                     ).pack(anchor = 'w', padx = 18)
+                     )
+        completar.pack(anchor = 'w', padx = 18)
+
+        def mostrar_resumen():
+            fecha_entrada = self.fecha_entrada.get().strip()
+            fecha_salida = self.fecha_salida.get().strip()
+            tipo_hab = self.tipo_habitacion.get().strip()
+
+            if not (fecha_entrada and fecha_salida and tipo_hab):
+                completar.pack(anchor = 'w', padx = 18)
+                return
+            
+            completar.pack_forget()
+
+            # Crear contenedor solo si no existe aún
+            if not hasattr(self, 'contenedor_resumen') or self.contenedor_resumen.winfo_exists() == 0:
+                self.contenedor_resumen = ctk.CTkFrame(
+                    master=resumen_reserva,
+                    fg_color=CLARO,
+                    border_color=GRIS_CLARO2,
+                    border_width=1,
+                    corner_radius=10)
+                self.contenedor_resumen.pack(fill='both', expand=True, padx=12, pady=12)
+            
+            # Limpiar contenido previo
+            for widget in self.contenedor_resumen.winfo_children():
+                widget.destroy()
+            
+            # Calcular cantidad de días
+            from datetime import datetime
+            formato = "%d-%m-%Y"
+            try:
+                entrada_dt = datetime.strptime(fecha_entrada, formato)
+                salida_dt = datetime.strptime(fecha_salida, formato)
+                noches = (salida_dt - entrada_dt).days
+                if noches < 0:
+                    noches = 0
+            except:
+                noches = 0
+
+            # Calcular precio total
+            try:
+                precio_por_noche = float(self.precio.get())
+                gastos_adicionales = float(self.gastos_adicionales.get() or 0)
+                descuento = float(self.descuento.get() or 0)
+                total = (precio_por_noche * noches + gastos_adicionales) * (1 - descuento/100)
+            except:
+                total = 0.0
+
+            if self.cliente_actual is not None:
+                cliente = f"{self.cliente_actual[1]} {self.cliente_actual[2]}"
+            else:
+                cliente = "No seleccionado"
+
+            # Mostrar resumen
+            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Cliente: {cliente}", anchor='w').pack(fill='x', padx=5)
+            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Tipo de habitación: {tipo_hab}", anchor='w').pack(fill='x', padx=5)
+            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Fechas: {fecha_entrada} al {fecha_salida} ({noches} noches)", anchor='w').pack(fill='x', padx=5)
+            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Total personas: {(self.acompanantes.get() or 0) + 1} ({self.acompanantes.get() or 0} acompañantes)", anchor='w').pack(fill='x', padx=5)
+            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Precio por noche: ${precio_por_noche:.2f}", anchor='w').pack(fill='x', padx=5)
+            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Gastos adicionales: ${gastos_adicionales:.2f}", anchor='w').pack(fill='x', padx=5)
+            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Descuento: {descuento:.2f}%", anchor='w').pack(fill='x', padx=5)
+            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO,text=f"Total: ${total:.2f}", anchor='w', font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).pack(fill='x', padx=5)
 
         #botones de accion
         btn_frame = ctk.CTkFrame(self.reservas, fg_color="transparent")

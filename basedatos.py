@@ -788,7 +788,6 @@ def buscar_cliente(texto): #el query de consulta para buscar cliente
         finally:
             conn.close()
 
-print(buscar_cliente('lu'))
 
 def obtener_habitaciones(): #obtiene todas las habitaciones en la bd
     conn = conectar_bd()
@@ -1003,6 +1002,38 @@ def id_tipo_hab(tipo):
             return resultado
         except sql.Error as e:
             print(f'Error al obtener tipos de habitaciones: {e}')
+        finally:
+            conn.close()
+
+def hab_por_tipo(tipo):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT * FROM habitaciones
+            WHERE tipo_id = ?;
+            """, (id_tipo_hab(tipo)[0],))
+            resultado = cursor.fetchall()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener habitaciones: {e}')
+        finally:
+            conn.close()
+
+def precio_por_tipo(tipo):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT precio_base FROM tipos_habitacion
+            WHERE nombre = ?;
+            """, (tipo,))
+            resultado = cursor.fetchone()
+            return resultado[0]
+        except sql.Error as e:
+            print(f'Error al obtener habitaciones: {e}')
         finally:
             conn.close()
 
