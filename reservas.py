@@ -7,6 +7,9 @@ class GestorReservas(ctk.CTkFrame):
         super().__init__(master = master, fg_color='transparent')
         self.pack(fill = 'both', expand = True)
 
+        #data
+        self.cliente_actual = None
+
         #kpi de reservas
         self.kpis = ctk.CTkFrame(master=self, fg_color='transparent', corner_radius=0)
         self.kpis.pack(anchor = 'n',fill = 'x')
@@ -78,15 +81,10 @@ class GestorReservas(ctk.CTkFrame):
     def nueva_reserva(self):
         for widget in self.reservas.winfo_children():
             widget.destroy()
-
         self.btn_nueva.configure(fg_color = AZUL, hover_color = AZUL,text_color = BLANCO) 
-
         self.btn_disp.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
-
         self.btn_gest.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
-
         self.btn_historial.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
-
         self.reservas.configure(border_width = 1)
 
         ctk.CTkLabel(master=self.reservas, 
@@ -103,10 +101,13 @@ class GestorReservas(ctk.CTkFrame):
         
         frame_buscador = ctk.CTkFrame(self.reservas, fg_color='transparent')
         frame_buscador.pack(fill = 'x', expand = True)
+
+        busqueda_var = ctk.StringVar()
         
         ctk.CTkEntry(master=frame_buscador,
                      placeholder_text='Buscar cliente por nombre, email o teléfono...',
                      placeholder_text_color=MUTE,
+                     textvariable=busqueda_var,
                      corner_radius=8,
                      text_color=OSCURO,
                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
@@ -114,14 +115,41 @@ class GestorReservas(ctk.CTkFrame):
                      border_width=1, height=35, width = 335
                      ).pack(side = 'left',pady = 6, padx = (12,5))
         
+        frame_busqueda_cliente = ctk.CTkFrame(master=self.reservas,border_color=GRIS_CLARO2,border_width=2,fg_color='transparent')
+
+        def buscar_cliente():
+            busqueda = busqueda_var.get().strip()
+            if not busqueda:
+                return
+            resultado = basedatos.buscar_cliente(busqueda)
+
+            if not resultado:
+                return
+
+            frame_busqueda_cliente.place(relx = 0.005, rely = 0.25, anchor = 'nw', relwidth = 0.95)
+            frame_busqueda_cliente.lift()
+
+            for cliente in resultado:
+                frame = ctk.CTkFrame(master=frame_busqueda_cliente, fg_color='transparent',border_color=GRIS_CLARO2,border_width=1)
+                frame.pack(fill = 'x', expand = True)
+                frame.bind("<Button-1>", lambda e, c = cliente: seleccionar_cliente(c))
+                nombre = ctk.CTkLabel(master=frame, text = f"{cliente[1]} {cliente[2]}", font=(FUENTE,TAMANO_TEXTO_DEFAULT, 'bold'), anchor = 'w')
+                nombre.pack(fill = 'both', expand = True, padx = 2, pady = 2)
+                nombre.bind("<Button-1>", lambda e, c = cliente: seleccionar_cliente(c))
+                contacto = ctk.CTkLabel(master=frame, text = f"📧 {cliente[9]} | 📞 {cliente[8]}", font=(FUENTE,12), anchor = 'w')
+                contacto.pack(fill = 'both', expand = True, padx = 2, pady = 2)
+                contacto.bind("<Button-1>", lambda e, c = cliente: seleccionar_cliente(c))
+
         ctk.CTkButton(master = frame_buscador, 
                             text = '🔍 Buscar', 
                             fg_color=AZUL, 
                             hover_color=AZUL2,
                             text_color=BLANCO,font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                             corner_radius=10,
+                            command=buscar_cliente
                             ).pack(side = 'left', padx = (0,5))
-        
+
+        #TODO: ver como añadir el modal de nuevo cliente aquí
         ctk.CTkButton(master = frame_buscador, 
                             text = '➕ Nuevo', 
                             fg_color=VERDE1, 
@@ -129,13 +157,41 @@ class GestorReservas(ctk.CTkFrame):
                             text_color=BLANCO,font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                             corner_radius=10,
                             ).pack(side = 'left', padx = (0,5))
-
+        
         frame_datos_reserva = ctk.CTkFrame(self.reservas, fg_color='transparent')
         frame_datos_reserva.pack(fill = 'x', expand = True)
         frame_datos_reserva.columnconfigure(index=(0,1,2,3,4,5,6,7), weight=1, uniform='z')
         frame_datos_reserva.rowconfigure(index=(0,1,2), weight=1, uniform='z')
 
-        #Frame con los datos del cliente. TODO: Agregar y colocar funcion
+        def seleccionar_cliente(cliente):
+            for w in frame_busqueda_cliente.winfo_children():
+                w.destroy()
+            frame_busqueda_cliente.place_forget()
+
+            frame_cliente = ctk.CTkFrame(master=frame_datos_reserva, 
+                                     height = 40,
+                                     fg_color=AZUL_CLARO
+                     )
+            frame_cliente.grid(row = 0, column= 0, columnspan = 2, sticky = 'ew', padx = 5)
+
+            cliente_seleccionado = ctk.CTkFrame(master=frame_cliente, height = 81, fg_color='#fcfcfc', border_color=GRIS_CLARO2, border_width=1, corner_radius=10)
+            cliente_seleccionado.pack(fill = 'both', expand = True, padx = 8, pady = 8)
+
+            nombre_cliente = f"Cliente seleccionado: {cliente[1]} {cliente[2]}"
+            contacto_cliente = f"📧 {cliente[9]} | 📞 {cliente[8]}"
+            ctk.CTkLabel(master=cliente_seleccionado, text=nombre_cliente, text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT)).pack(anchor = 'w', padx = 5, pady = (5,0))
+            ctk.CTkLabel(master=cliente_seleccionado, text=contacto_cliente, text_color=OSCURO, font=(FUENTE, 12)).pack(anchor = 'w', padx = 5, pady = (0,5))
+
+            ctk.CTkButton(master=cliente_seleccionado, text='Cambiar', text_color=CLARO, font=(FUENTE, 12), fg_color=PRIMARIO, hover_color=ROJO, width=50, command=lambda f = frame_cliente: limpiar_cliente(f)).place(relx = 0.98, rely = 0.5, anchor = 'e')
+
+            self.cliente_actual = cliente
+
+        def limpiar_cliente(frame):
+            for w in frame.winfo_children():
+                w.destroy()
+            frame.grid_forget()
+
+            self.cliente_actual = None
 
         #Fecha de Entrada
         ctk.CTkLabel(master=frame_datos_reserva, 
@@ -183,7 +239,7 @@ class GestorReservas(ctk.CTkFrame):
                         dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                         border_color= GRIS_CLARO2,
                         border_width=1, height=35
-                        ).grid(row = 0, column = 7, sticky = 'nsew')
+                        ).grid(row = 0, column = 7, sticky = 'ew')
         
         #Tipo de reserva
         ctk.CTkLabel(master=frame_datos_reserva, 
@@ -205,7 +261,7 @@ class GestorReservas(ctk.CTkFrame):
                         dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                         border_color= GRIS_CLARO2,
                         border_width=1, height=35
-                        ).grid(row = 1, column = 1, sticky = 'nsew')
+                        ).grid(row = 1, column = 1, sticky = 'ew')
         
         #acompañantes
         ctk.CTkLabel(master=frame_datos_reserva, 
@@ -244,7 +300,7 @@ class GestorReservas(ctk.CTkFrame):
                         dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                         border_color= GRIS_CLARO2,
                         border_width=1, height=35
-                        ).grid(row = 1, column = 5, sticky = 'nsew')
+                        ).grid(row = 1, column = 5, sticky = 'ew')
         
         #precio por noche
         ctk.CTkLabel(master=frame_datos_reserva, 

@@ -788,6 +788,8 @@ def buscar_cliente(texto): #el query de consulta para buscar cliente
         finally:
             conn.close()
 
+print(buscar_cliente('lu'))
+
 def obtener_habitaciones(): #obtiene todas las habitaciones en la bd
     conn = conectar_bd()
     if conn:

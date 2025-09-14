@@ -20,6 +20,7 @@ class Dashboard(ctk.CTkFrame):
         #botones de acciones rápidas
         self.acciones_rapidas()
 
+      #TODO: ver como añadir los modales aqui
     def acciones_rapidas(self):
         contenedor = ctk.CTkFrame(self, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=12, height=100)
         contenedor.grid(row = 1, column =0, columnspan= 4, sticky = 'nsew')
