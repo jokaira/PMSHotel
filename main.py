@@ -22,7 +22,7 @@ class App(ctk.CTk):
         # self.attributes('-fullscreen', True) #para ponerlo en pantalla completa. No descomentar
 
         #metodo para activar el responsive
-        #TODO: configurar el responsive layout para cada uno
+        # #TODO: configurar el responsive layout para cada uno
         # SizeNotifier(self, {
         #     300: self.crear_layout_1,
         #     640: self.crear_layout_2,

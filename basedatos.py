@@ -1,4 +1,5 @@
 import sqlite3 as sql
+from datetime import date
 
 NOMBRE_BASEDATOS = 'base_datos.db'
 
@@ -1093,5 +1094,55 @@ def guardar_tipo_habitacion(tipo, datos, clave):
             return True, "Datos insertados exitosamente"
         except sql.Error as e:
             return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
+
+def hab_disponibles(fecha_entrada, fecha_salida):
+    query = """
+            SELECT h.*
+            FROM habitaciones h
+            WHERE h.estado = 'Disponible'
+            AND h.numero NOT IN (
+                SELECT r.numero_hab
+                FROM reservas r
+                WHERE r.estado != 'Cancelada'
+                AND r.fecha_entrada < :fecha_salida
+                AND r.fecha_salida > :fecha_entrada
+            )
+            -- Caso especial: si la fecha de entrada es hoy, excluir habitaciones con check-in activo
+            AND (:fecha_entrada != DATE('now')
+                OR h.numero NOT IN (
+                    SELECT r.numero_hab
+                    FROM reservas r
+                    WHERE r.checked_in = 1 AND r.checked_out = 0
+                )
+            );
+            """
+    
+    query2 = """
+            SELECT nombre FROM tipos_habitacion
+            WHERE id = ?
+            """
+    
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(query, {"fecha_entrada": fecha_entrada, "fecha_salida": fecha_salida})
+            habitaciones = cursor.fetchall()
+            resultado = []
+            for habitacion in habitaciones:
+                datos_hab = []
+                datos_hab.append(habitacion[1])
+                cursor.execute(query2, (habitacion[2],))
+                tipo_hab = cursor.fetchone()[0]
+                datos_hab.append(tipo_hab)
+                datos_hab.append(habitacion[4])
+                datos_hab.append(habitacion[5])
+
+                resultado.append(datos_hab)
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener habitaciones: {e}')
         finally:
             conn.close()

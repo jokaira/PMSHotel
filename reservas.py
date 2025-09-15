@@ -2,6 +2,7 @@ import customtkinter as ctk
 from settings import *
 from func_clases import *
 from datetime import datetime
+from tkinter import messagebox
 
 class GestorReservas(ctk.CTkFrame):
     def __init__(self, master):
@@ -140,7 +141,7 @@ class GestorReservas(ctk.CTkFrame):
                      border_width=1, height=35, width = 335
                      ).pack(side = 'left',pady = 6, padx = (12,5))
         
-        frame_busqueda_cliente = ctk.CTkFrame(master=self.reservas,border_color=GRIS_CLARO2,border_width=2,fg_color='transparent')
+        frame_busqueda_cliente = ctk.CTkFrame(master=self.master,border_color=GRIS_CLARO2,border_width=2,fg_color='transparent')
 
         def buscar_cliente():
             busqueda = busqueda_var.get().strip()
@@ -151,7 +152,7 @@ class GestorReservas(ctk.CTkFrame):
             if not resultado:
                 return
 
-            frame_busqueda_cliente.place(relx = 0.005, rely = 0.25, anchor = 'nw', relwidth = 0.95)
+            frame_busqueda_cliente.place(x = 15, y = 305, anchor = 'nw', relwidth = 0.95)
             frame_busqueda_cliente.lift()
 
             for cliente in resultado:
@@ -186,7 +187,6 @@ class GestorReservas(ctk.CTkFrame):
         frame_datos_reserva = ctk.CTkFrame(self.reservas, fg_color='transparent')
         frame_datos_reserva.pack(fill = 'x', expand = True)
         frame_datos_reserva.columnconfigure(index=(0,1,2,3,4,5,6,7), weight=1, uniform='z')
-        frame_datos_reserva.rowconfigure(index=(0,1,2), weight=1, uniform='z')
 
         def seleccionar_cliente(cliente):
             for w in frame_busqueda_cliente.winfo_children():
@@ -256,7 +256,7 @@ class GestorReservas(ctk.CTkFrame):
         
         #obtener tipos de habitacion en la base de datos
         tipos_hab = [row[1] for row in basedatos.obtener_tipos_habitaciones()]
-        
+                
         #actualizar cada vez q cambia el tipo
         def actualizar_habitaciones(opcion):
             habitaciones = basedatos.hab_por_tipo(opcion.strip())
@@ -264,6 +264,7 @@ class GestorReservas(ctk.CTkFrame):
                 #rellenar combobox
                 valores = ['Asignación automática'] + [f"{hab[1]}, {hab[4]}" for hab in habitaciones]
                 combo_habitaciones.configure(values = valores)
+                self.habitacion.set(valores[0])
 
                 precio = basedatos.precio_por_tipo(opcion.strip())
                 if precio:
@@ -422,6 +423,10 @@ class GestorReservas(ctk.CTkFrame):
             fecha_entrada = self.fecha_entrada.get().strip()
             fecha_salida = self.fecha_salida.get().strip()
             tipo_hab = self.tipo_habitacion.get().strip()
+            try:
+                acompanantes = int(self.acompanantes.get())
+            except (tk.TclError, ValueError):
+                acompanantes = 0
 
             if not (fecha_entrada and fecha_salida and tipo_hab):
                 completar.pack(anchor = 'w', padx = 18)
@@ -457,10 +462,10 @@ class GestorReservas(ctk.CTkFrame):
 
             # Calcular precio total
             try:
-                precio_por_noche = float(self.precio.get())
+                precio_por_noche = float(self.precio.get() or 0)
                 gastos_adicionales = float(self.gastos_adicionales.get() or 0)
-                descuento = float(self.descuento.get() or 0)
-                total = (precio_por_noche * noches + gastos_adicionales) * (1 - descuento/100)
+                descuento = int(self.descuento.get() or 0)
+                total = (precio_por_noche * noches) * (1 - descuento/100) + gastos_adicionales
             except:
                 total = 0.0
 
@@ -473,21 +478,46 @@ class GestorReservas(ctk.CTkFrame):
             ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Cliente: {cliente}", anchor='w').pack(fill='x', padx=5)
             ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Tipo de habitación: {tipo_hab}", anchor='w').pack(fill='x', padx=5)
             ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Fechas: {fecha_entrada} al {fecha_salida} ({noches} noches)", anchor='w').pack(fill='x', padx=5)
-            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Total personas: {(self.acompanantes.get() or 0) + 1} ({self.acompanantes.get() or 0} acompañantes)", anchor='w').pack(fill='x', padx=5)
+            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Total personas: {acompanantes + 1} ({acompanantes} acompañantes)", anchor='w').pack(fill='x', padx=5)
             ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Precio por noche: ${precio_por_noche:.2f}", anchor='w').pack(fill='x', padx=5)
+            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Descuento: {descuento}%", anchor='w').pack(fill='x', padx=5)
             ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Gastos adicionales: ${gastos_adicionales:.2f}", anchor='w').pack(fill='x', padx=5)
-            ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Descuento: {descuento:.2f}%", anchor='w').pack(fill='x', padx=5)
             ctk.CTkLabel(self.contenedor_resumen, text_color=OSCURO,text=f"Total: ${total:.2f}", anchor='w', font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).pack(fill='x', padx=5)
 
         #botones de accion
         btn_frame = ctk.CTkFrame(self.reservas, fg_color="transparent")
         btn_frame.pack(fill = 'x', expand = True, padx = 12, pady = 12)
 
+        def mostrar_disponibilidad():
+            fecha_entrada = self.fecha_entrada.get().strip()
+            fecha_salida = self.fecha_salida.get().strip()
+            tipo_hab = self.tipo_habitacion.get().strip()
+
+            if not (fecha_entrada and fecha_salida and tipo_hab):
+                return
+
+            hab_disp = basedatos.hab_disponibles(fecha_entrada=fecha_entrada, fecha_salida=fecha_salida)
+       
+            cant_habitaciones = 0
+            string_disponibles = ""
+
+            for habitacion in hab_disp:
+                if habitacion[1] != tipo_hab:
+                    continue
+                cant_habitaciones += 1
+                string_disponibles += f"Habitación {habitacion[0]} en el {habitacion[2]}\n"
+
+            if cant_habitaciones == 0:
+                messagebox.showinfo("Habitaciones disponibles", "No hay habitaciones disponibles para esas fechas")
+                return
+            messagebox.showinfo("Habitaciones disponibles",f"{cant_habitaciones} habitaciones disponibles:\n {string_disponibles}")
+            
         btn_disponibilidad = Boton(master=btn_frame,
                            texto='🔍 Verificar Disponibilidad',
                            padx=2,
                            pady=2,
                            fill=None,
+                           metodo=mostrar_disponibilidad
                            )
         
         btn_confirmar = Boton(master=btn_frame,
