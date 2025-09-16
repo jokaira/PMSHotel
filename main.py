@@ -18,18 +18,7 @@ class App(ctk.CTk):
         ctk.set_appearance_mode('light')
         self.title("PMS Hotel")
         self.geometry(f'{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0')
-        # self.geometry(f'1220x768+0+0')
-        # self.attributes('-fullscreen', True) #para ponerlo en pantalla completa. No descomentar
-
-        #metodo para activar el responsive
-        # #TODO: configurar el responsive layout para cada uno
-        # SizeNotifier(self, {
-        #     300: self.crear_layout_1,
-        #     640: self.crear_layout_2,
-        #     900: self.crear_layout_3,
-        #     1024: self.crear_layout_4,
-        # })
-
+     
         #inicia la verificacion de las tablas de la base de datos
         basedatos.conectar_bd()
         basedatos.verificar_tablas()
@@ -104,34 +93,6 @@ class App(ctk.CTk):
         self.main_frame.label_titulo.configure(text = BTN_HEAD[3])
         self.btn_reservas.configure(fg_color = '#34495e')
         self.reservas = GestorReservas(self.main_frame.modulos)
-
-class SizeNotifier: #para layout responsivo, NO TOCAR
-    def __init__(self, window, size_dict):
-        self.window = window
-    #     self.size_dict = {key: value for key, value in sorted(size_dict.items())}
-    #     self.current_min_size = None
-
-    #     self.window.bind('<Configure>', self.check_size)
-
-    #     window.update()
-
-    #     min_height = window.winfo_height()
-    #     min_width = list(self.size_dict)[0]
-    #     window.minsize(min_width, min_height)   
-    
-    # def check_size(self, event):
-    #     if event.widget == self.window:
-    #         window_width = event.width
-    #         checked_size = None
-            
-    #         for min_size in self.size_dict:
-    #             delta = window_width - min_size
-    #             if delta >= 0:
-    #                 checked_size = min_size
-            
-    #         if checked_size != self.current_min_size:
-    #             self.current_min_size = checked_size
-    #             self.size_dict[self.current_min_size]()
 
 class Header(ctk.CTkFrame):
     def __init__(self, master):

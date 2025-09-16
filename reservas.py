@@ -89,6 +89,7 @@ class GestorReservas(ctk.CTkFrame):
                           )
             self.btn_historial.pack(side ='left', padx = 5)
     
+    #TODO: modal de pagos
     def nueva_reserva(self):
         for widget in self.reservas.winfo_children():
             widget.destroy()
@@ -99,7 +100,6 @@ class GestorReservas(ctk.CTkFrame):
         self.reservas.configure(border_width = 1)
 
         #tracing
-
         # Tipo de habitación
         self.tipo_habitacion.trace_add("write", lambda *args: mostrar_resumen())
 
@@ -193,13 +193,14 @@ class GestorReservas(ctk.CTkFrame):
                 w.destroy()
             frame_busqueda_cliente.place_forget()
 
-            frame_cliente = ctk.CTkFrame(master=frame_datos_reserva, 
-                                     height = 40,
-                                     fg_color=AZUL_CLARO
-                     )
-            frame_cliente.grid(row = 0, column= 0, columnspan = 2, sticky = 'ew', padx = 5)
+            if not hasattr(self, 'frame_cliente') or self.frame_cliente.winfo_exists() == 0:
+                self.frame_cliente = ctk.CTkFrame(master=frame_datos_reserva, 
+                                        height = 40,
+                                        fg_color=AZUL_CLARO
+                        )
+                self.frame_cliente.grid(row = 0, column= 0, columnspan = 2, sticky = 'ew', padx = 5)
 
-            cliente_seleccionado = ctk.CTkFrame(master=frame_cliente, height = 81, fg_color='#fcfcfc', border_color=GRIS_CLARO2, border_width=1, corner_radius=10)
+            cliente_seleccionado = ctk.CTkFrame(master=self.frame_cliente, height = 81, fg_color='#fcfcfc', border_color=GRIS_CLARO2, border_width=1, corner_radius=10)
             cliente_seleccionado.pack(fill = 'both', expand = True, padx = 8, pady = 8)
 
             nombre_cliente = f"Cliente seleccionado: {cliente[1]} {cliente[2]}"
@@ -207,7 +208,7 @@ class GestorReservas(ctk.CTkFrame):
             ctk.CTkLabel(master=cliente_seleccionado, text=nombre_cliente, text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT)).pack(anchor = 'w', padx = 5, pady = (5,0))
             ctk.CTkLabel(master=cliente_seleccionado, text=contacto_cliente, text_color=OSCURO, font=(FUENTE, 12)).pack(anchor = 'w', padx = 5, pady = (0,5))
 
-            ctk.CTkButton(master=cliente_seleccionado, text='Cambiar', text_color=CLARO, font=(FUENTE, 12), fg_color=PRIMARIO, hover_color=ROJO, width=50, command=lambda f = frame_cliente: limpiar_cliente(f)).place(relx = 0.98, rely = 0.5, anchor = 'e')
+            ctk.CTkButton(master=cliente_seleccionado, text='Cambiar', text_color=CLARO, font=(FUENTE, 12), fg_color=PRIMARIO, hover_color=ROJO, width=50, command=lambda f = self.frame_cliente: limpiar_cliente(f)).place(relx = 0.98, rely = 0.5, anchor = 'e')
 
             self.cliente_actual = cliente
             mostrar_resumen()
@@ -262,7 +263,7 @@ class GestorReservas(ctk.CTkFrame):
             habitaciones = basedatos.hab_por_tipo(opcion.strip())
             if habitaciones:
                 #rellenar combobox
-                valores = ['Asignación automática'] + [f"{hab[1]}, {hab[4]}" for hab in habitaciones]
+                valores = [f"{hab[1]}, {hab[4]}" for hab in habitaciones]
                 combo_habitaciones.configure(values = valores)
                 self.habitacion.set(valores[0])
 
@@ -507,11 +508,34 @@ class GestorReservas(ctk.CTkFrame):
                 cant_habitaciones += 1
                 string_disponibles += f"Habitación {habitacion[0]} en el {habitacion[2]}\n"
 
+
             if cant_habitaciones == 0:
                 messagebox.showinfo("Habitaciones disponibles", "No hay habitaciones disponibles para esas fechas")
+                self.habitacion.set("")
                 return
             messagebox.showinfo("Habitaciones disponibles",f"{cant_habitaciones} habitaciones disponibles:\n {string_disponibles}")
             
+
+        def limpiar():
+            if hasattr(self,"contenedor_resumen"):
+                self.contenedor_resumen.destroy()
+
+            completar.pack(anchor = 'w', padx = 18)
+
+            if hasattr(self,"frame_cliente"):
+                self.frame_cliente.destroy()
+
+            self.cliente_actual = None
+            self.fecha_entrada.set("")
+            self.fecha_salida.set("")
+            self.tipo_habitacion.set("")
+            self.acompanantes.set(0)
+            self.habitacion.set("")
+            self.precio.set(0.00)
+            self.notas.set("")
+            self.gastos_adicionales.set(0.00)
+            self.descuento.set(0)
+          
         btn_disponibilidad = Boton(master=btn_frame,
                            texto='🔍 Verificar Disponibilidad',
                            padx=2,
@@ -536,7 +560,10 @@ class GestorReservas(ctk.CTkFrame):
                            padx=2,
                            pady=2,
                            fill=None,
+                           metodo=limpiar
                            )
+
+
 
     def buscar_disponibilidad(self):
         for widget in self.reservas.winfo_children():
