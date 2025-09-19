@@ -607,7 +607,7 @@ class GestorReservas(ctk.CTkFrame):
                            metodo=limpiar
                            )
 
-    def crear_formulario_pago(self, master): #TODO: readecuar al nuevo módulo
+    def crear_formulario_pago(self, master):
         if not self.cliente_actual:
             messagebox.showerror("Error", "Debe de seleccionar un cliente")
             master.destroy()
@@ -621,7 +621,7 @@ class GestorReservas(ctk.CTkFrame):
         fecha_entrada = datetime.strftime(datetime.strptime(self.fecha_entrada.get().strip(),'%d-%m-%Y'), '%Y-%m-%d')
         fecha_salida = datetime.strftime(datetime.strptime(self.fecha_salida.get().strip(),'%d-%m-%Y'), '%Y-%m-%d')
         pago_total = self.total
-
+        
         if not habitacion or not fecha_entrada or not fecha_salida:
             messagebox.showerror("Error", "Debe de completar todos los datos obligatorios para la reserva")
             return
@@ -635,7 +635,9 @@ class GestorReservas(ctk.CTkFrame):
         notas_pago = ctk.StringVar()
                 
         # #letrero de campos obligatorios
-        ctk.CTkLabel(master=frame_formulario, text="*: Campos obligatorios").place(relx = 0.95, rely = 0.95, anchor = 'se')
+        obligatorio = ctk.CTkLabel(master=frame_formulario, text="*: Campos obligatorios")
+        obligatorio.place(relx = 0.95, rely = 0.95, anchor = 'se')
+        
 
         datos_reserva = ctk.CTkFrame(master=frame_formulario, corner_radius=10, border_color=GRIS_CLARO2, border_width=1, fg_color=GRIS_CLARO)
         datos_reserva.pack(fill = 'x', anchor = 'n')
@@ -690,7 +692,7 @@ class GestorReservas(ctk.CTkFrame):
                      font=(FUENTE, TAMANO_TEXTO_DEFAULT)
                      ).grid(row = 1, column = 0, sticky = 'w', pady = (0,12))
         ctk.CTkEntry(master=campos_pago,
-                     textvariable=comprobante_pago,
+                     textvariable=notas_pago,
                      text_color=OSCURO,
                      font= (FUENTE, TAMANO_TEXTO_DEFAULT),
                      border_width=1,
@@ -720,13 +722,33 @@ class GestorReservas(ctk.CTkFrame):
                 return
 
             #ahora guardo la reserva
-            #TODO: Modificar tabla de reservas para poder registrar el ID de pago
+            datos_reserva = [
+                habitacion[:3],
+                tipo_hab,
+                id_cliente,
+                nombre_cliente,
+                email_cliente,
+                fecha_entrada,
+                fecha_salida,
+                id_pago,
+                pago_total,
+                self.notas.get().strip()
+            ]
 
+            reserva_guardada, mensaje_reserva = basedatos.guardar_reserva(tipo="agregar",datos=datos_reserva)
+
+            if not reserva_guardada:
+                messagebox.showerror("Error", mensaje_reserva)
+                return
+            
+            messagebox.showinfo("Reserva guardada", "La reserva fue guardada exitosamente")
             master.destroy()
+            return
 
 
         btn_frame = ctk.CTkFrame(master=frame_formulario, fg_color='transparent')
         btn_frame.pack(fill ='x', expand = True)
+        obligatorio.lift(aboveThis=btn_frame)
 
         btn_frame.columnconfigure(index=(0,1,2,3,4,5,6,7), weight = 1, uniform= 'z')
 
@@ -749,7 +771,7 @@ class GestorReservas(ctk.CTkFrame):
                       text_color=BLANCO,
                       font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                       corner_radius=10,
-                      command="guardar",
+                      command=guardar,
                         ).grid(row = 6, column = 1, columnspan = 4,pady = 12)
 
     def buscar_disponibilidad(self):

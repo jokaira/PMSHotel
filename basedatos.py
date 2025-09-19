@@ -90,6 +90,22 @@ def crear_tablas():
             conn.commit()
             print('3. Tabla "habitaciones" creada exitosamente')
 
+            #16. ingresos
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ingresos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tipo_ingreso TEXT NOT NULL, -- 'reserva', 'walk_in', 'costo_adicional_checkout', 'evento'
+                concepto TEXT NOT NULL, -- Descripción del pago
+                monto REAL NOT NULL,
+                metodo_pago TEXT NOT NULL, -- 'efectivo', 'tarjeta', 'transferencia', 'cheque'
+                fecha_pago DATETIME DEFAULT (datetime('now')),
+                numero_transaccion TEXT, -- Número de transacción bancaria
+                notas TEXT
+            )
+            """)
+            conn.commit()
+            print('16. Tabla "ingresos" creada exitosamente')
+
             #4. reservas
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS reservas (
@@ -101,14 +117,17 @@ def crear_tablas():
                 cliente_email TEXT NOT NULL,
                 fecha_entrada DATE NOT NULL,
                 fecha_salida DATE NOT NULL,
-                precio_por_noche REAL NOT NULL,
+                id_pago INTEGER NOT NULL,
+                monto_pago REAL NOT NULL,
                 checked_in BOOLEAN DEFAULT 0,
                 checked_out BOOLEAN DEFAULT 0,
                 estado TEXT NOT NULL DEFAULT 'Pendiente',
                 fecha_creacion DATETIME DEFAULT (datetime('now')),
                 notas TEXT,
                 FOREIGN KEY (id_cliente) REFERENCES clientes(id),
-                FOREIGN KEY (numero_hab) REFERENCES habitaciones(numero)
+                FOREIGN KEY (cliente_email) REFERENCES clientes(email),
+                FOREIGN KEY (numero_hab) REFERENCES habitaciones(numero),
+                FOREIGN KEY (id_pago) REFERENCES ingresos(id)
             );
             """)
             conn.commit()
@@ -322,21 +341,7 @@ def crear_tablas():
             conn.commit()
             print('15. Tabla "inventario" creada exitosamente')
 
-            #16. ingresos
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS ingresos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tipo_ingreso TEXT NOT NULL, -- 'reserva', 'walk_in', 'costo_adicional_checkout', 'evento'
-                concepto TEXT NOT NULL, -- Descripción del pago
-                monto REAL NOT NULL,
-                metodo_pago TEXT NOT NULL, -- 'efectivo', 'tarjeta', 'transferencia', 'cheque'
-                fecha_pago DATETIME DEFAULT (datetime('now')),
-                numero_transaccion TEXT, -- Número de transacción bancaria
-                notas TEXT
-            )
-            """)
-            conn.commit()
-            print('16. Tabla "ingresos" creada exitosamente')
+            
 
             conn.close()
             print('Todas las tablas creadas exitosamente')
@@ -396,16 +401,39 @@ def insertar_datos_muestra():
             ('EMP005', 'Carmen', 'Vega', 'Camarera', 'Housekeeping', 10.00, '2023-05-12', '809-555-5555', 'carmen.vega@hotel.com');
             """)
 
+            # Insertar Ingresos
+            cursor.execute("""
+            INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago, fecha_pago, numero_transaccion, notas) VALUES
+            ('reserva', 'Pago reserva habitación 101 - María Pérez - 2 noches', 160.00, 'tarjeta', date('now'),'TXN001234', 'Pago realizado al check-in'),
+            ('reserva', 'Pago reserva habitación 102 - Juan Gómez - 1 noche', 50.00, 'efectivo', date('now'), 'TXN001235', 'Pago realizado al check-in'),
+            ('reserva', 'Pago reserva habitación 203 - Roberto Fernández - 2 noches', 300.00, 'tarjeta', date('now', '-1 day'), 'TXN001236', 'Pago realizado al check-in'),
+            ('walk_in', 'Pago walk-in habitación 302 - Pedro Ramírez - 1 noche', 80.00, 'efectivo', date('now'), 'TXN001237', 'Pago realizado al check-in walk-in'),
+            ('costo_adicional_checkout', 'Servicios adicionales habitación 101 - minibar y llamadas', 45.50, 'tarjeta', date('now'), 'TXN001238', 'Cargos adicionales al check-out'),
+            ('costo_adicional_checkout', 'Servicio de lavandería habitación 101', 25.00, 'tarjeta', date('now'), 'TXN001239', 'Servicio de lavandería'),
+            ('evento', 'Pago evento buffet - Conferencia Salón A - 50 personas', 750.00, 'transferencia', date('now', '+5 days'), 'TXN001243', 'Pago evento corporativo'),
+            ('evento', 'Pago evento buffet - Boda Salón B - 80 personas', 2000.00, 'cheque', date('now', '+15 days'), 'CHK001244', 'Pago pendiente de confirmación'),
+            ('walk_in', 'Pago walk-in habitación 103 - Cliente anterior - 1 noche', 50.00, 'efectivo', date('now', '-25 days'), 'TXN000124', 'Ingreso del mes anterior'),
+            ('costo_adicional_checkout', 'Servicios adicionales habitación 202 - minibar', 35.75, 'tarjeta', date('now', '-20 days'), 'TXN000125', 'Ingreso del mes anterior'),
+            ('reserva', 'Pago reserva habitación 201 - Ana Rodríguez - 2 noches', 300.00, 'tarjeta', date('now', '+1 day'), 'TXN001245', 'Pago realizado al check-in'),
+            ('reserva', 'Pago reserva habitación 301 - Carlos López - 2 noches', 160.00, 'tarjeta', date('now', '+2 days'), 'TXN001246', 'Pago realizado al check-in'),
+            ('reserva', 'Pago reserva habitación 401 - Sofia Martínez - 2 noches', 600.00, 'transferencia', date('now', '+5 days'), 'TXN001247', 'Pago realizado al check-in'),
+            ('reserva', 'Pago reserva habitación 103 - Carmen García - 2 noches', 100.00, 'efectivo', date('now', '+10 days'), 'TXN001248', 'Pago realizado al check-in');
+            """)
+
             # Insertar Reservas
             cursor.execute("""
-            INSERT INTO reservas (numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email, fecha_entrada, fecha_salida, precio_por_noche, checked_in, checked_out, estado) VALUES
-            ('101', 'Doble', 1, 'María Pérez', 'maria@example.com', date('now'), date('now', '+2 days'), 80.00, 1, 0, 'En curso'),
-            ('102', 'Individual', 2, 'Juan Gómez', 'juan@example.com', date('now'), date('now', '+1 day'), 50.00, 1, 0, 'En curso'),
-            ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@example.com', date('now', '+1 day'), date('now', '+3 days'), 150.00, 0, 0, 'Pendiente'),
-            ('301', 'Doble', 4, 'Carlos López', 'carlos@example.com', date('now', '+2 days'), date('now', '+4 days'), 80.00, 0, 0, 'Pendiente'),
-            ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@example.com', date('now', '+5 days'), date('now', '+7 days'), 300.00, 0, 0, 'Pendiente'),
-            ('203', 'Suite', 6, 'Roberto Fernández', 'roberto@example.com', date('now', '-1 day'), date('now', '+1 day'), 150.00, 1, 0, 'En curso'),
-            ('103', 'Individual', 7, 'Carmen García', 'carmen@example.com', date('now', '+10 days'), date('now', '+12 days'), 50.00, 0, 0, 'Pendiente');
+            INSERT INTO reservas (
+                numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email,
+                fecha_entrada, fecha_salida, id_pago, monto_pago,
+                checked_in, checked_out, estado, notas
+            ) VALUES
+            ('101', 'Doble', 1, 'María Pérez', 'maria@example.com', date('now'), date('now', '+2 days'), 1, 160.00, 1, 0, 'En curso', ''),
+            ('102', 'Individual', 2, 'Juan Gómez', 'juan@example.com', date('now'), date('now', '+1 day'), 2, 50.00, 1, 0, 'En curso', ''),
+            ('203', 'Suite', 6, 'Roberto Fernández', 'roberto@example.com', date('now', '-1 day'), date('now', '+1 day'), 3, 300.00, 1, 0, 'En curso', ''),
+            ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@example.com', date('now', '+1 day'), date('now', '+3 days'), 11, 300.00, 0, 0, 'Pendiente', ''),
+            ('301', 'Doble', 4, 'Carlos López', 'carlos@example.com', date('now', '+2 days'), date('now', '+4 days'), 12, 160.00, 0, 0, 'Pendiente', ''),
+            ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@example.com', date('now', '+5 days'), date('now', '+7 days'), 13, 600.00, 0, 0, 'Pendiente', ''),
+            ('103', 'Individual', 7, 'Carmen García', 'carmen@example.com', date('now', '+10 days'), date('now', '+12 days'), 14, 100.00, 0, 0, 'Pendiente', '');
             """)
 
             # Insertar Walk-ins
@@ -505,24 +533,7 @@ def insertar_datos_muestra():
             ('Leche', 40, 25, 'litro', 2.80, 'Lácteos Frescos');
             """)
 
-            # Insertar Ingresos
-            cursor.execute("""
-            INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago, fecha_pago, numero_transaccion, notas) VALUES
-            ('reserva', 'Pago reserva habitación 101 - María Pérez - 2 noches', 160.00, 'tarjeta', date('now'),'TXN001234', 'Pago realizado al check-in'),
-            ('reserva', 'Pago reserva habitación 102 - Juan Gómez - 1 noche', 50.00, 'efectivo', date('now'), 'TXN001235', 'Pago realizado al check-in'),
-            ('reserva', 'Pago reserva habitación 203 - Roberto Fernández - 2 noches', 300.00, 'tarjeta', date('now', '-1 day'), 'TXN001236', 'Pago realizado al check-in'),
-            ('walk_in', 'Pago walk-in habitación 302 - Pedro Ramírez - 1 noche', 80.00, 'efectivo', date('now'), 'TXN001237', 'Pago realizado al check-in walk-in'),
-            ('costo_adicional_checkout', 'Servicios adicionales habitación 101 - minibar y llamadas', 45.50, 'tarjeta', date('now'), 'TXN001238', 'Cargos adicionales al check-out'),
-            ('costo_adicional_checkout', 'Servicio de lavandería habitación 101', 25.00, 'tarjeta', date('now'), 'TXN001239', 'Servicio de lavandería'),
-            ('reserva', 'Depósito reserva habitación 201 - Ana Rodríguez - 2 noches', 75.00, 'transferencia', date('now', '+1 day'), 'TXN001240', 'Depósito del 50%'),
-            ('reserva', 'Depósito reserva habitación 301 - Carlos López - 2 noches', 40.00, 'tarjeta', date('now', '+2 days'), 'TXN001241', 'Depósito del 50%'),
-            ('reserva', 'Depósito reserva habitación 401 - Sofia Martínez - 2 noches', 150.00, 'transferencia', date('now', '+5 days'), 'TXN001242', 'Depósito del 50%'),
-            ('evento', 'Pago evento buffet - Conferencia Salón A - 50 personas', 750.00, 'transferencia', date('now', '+5 days'), 'TXN001243', 'Pago evento corporativo'),
-            ('evento', 'Pago evento buffet - Boda Salón B - 80 personas', 2000.00, 'cheque', date('now', '+15 days'), 'CHK001244', 'Pago pendiente de confirmación'),
-            ('reserva', 'Pago reserva habitación 201 - Cliente anterior - 3 noches', 450.00, 'tarjeta', date('now', '-30 days'), 'TXN000123', 'Ingreso del mes anterior'),
-            ('walk_in', 'Pago walk-in habitación 103 - Cliente anterior - 1 noche', 50.00, 'efectivo', date('now', '-25 days'), 'TXN000124', 'Ingreso del mes anterior'),
-            ('costo_adicional_checkout', 'Servicios adicionales habitación 202 - minibar', 35.75, 'tarjeta', date('now', '-20 days'), 'TXN000125', 'Ingreso del mes anterior');
-            """)
+            
             conn.commit()
             print('Datos de muestra insertados correctamente.')
         except sql.Error as e:
@@ -1153,25 +1164,26 @@ def registrar_pago(datos):
         finally:
             conn.close()
 
-# def guardar_reserva(tipo, datos, clave):
-#     conn = conectar_bd()
-#     if conn:
-#         cursor = conn.cursor()
-#         try:
-#             if tipo == "agregar": #agregar habitacion
-#                 cursor.execute("""
-#                 INSERT INTO tipos_habitacion(nombre,capacidad,precio_base,descripcion)
-#                 VALUES (?,?,?,?)
-#                 """, (datos))
-#             else: #editar cliente
-#                 cursor.execute("""
-#                 UPDATE tipos_habitacion
-#                 SET nombre = ?, capacidad = ?, precio_base = ?, descripcion = ? 
-#                 WHERE nombre = ?
-#                 """, (*datos[:4], clave))
-#             conn.commit()
-#             return True, "Datos insertados exitosamente"
-#         except sql.Error as e:
-#             return False, f"Error al guardar datos: {e}"
-#         finally:
-#             conn.close()
+def guardar_reserva(tipo, datos, clave = None):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            if tipo == "agregar": #agregar reserva
+                cursor.execute("""
+                INSERT INTO reservas(numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email, fecha_entrada, fecha_salida, id_pago, monto_pago, notas)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (datos))
+            else: #editar reserva
+                # cursor.execute("""
+                # UPDATE tipos_habitacion
+                # SET nombre = ?, capacidad = ?, precio_base = ?, descripcion = ? 
+                # WHERE nombre = ?
+                # """, (*datos[:4], clave))
+                pass
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
