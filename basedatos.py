@@ -117,6 +117,7 @@ def crear_tablas():
                 cliente_email TEXT NOT NULL,
                 fecha_entrada DATE NOT NULL,
                 fecha_salida DATE NOT NULL,
+                total_personas INTEGER NOT NULL DEFAULT 1,
                 id_pago INTEGER NOT NULL,
                 monto_pago REAL NOT NULL,
                 checked_in BOOLEAN DEFAULT 0,
@@ -234,20 +235,18 @@ def crear_tablas():
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS walk_ins (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombres TEXT NOT NULL,
-                apellidos TEXT NOT NULL,
-                tipo_doc TEXT NOT NULL,
-                numero_doc TEXT NOT NULL,
-                telefono TEXT NOT NULL,
-                email TEXT NOT NULL,
                 numero_hab TEXT NOT NULL,
+                cliente_nombre TEXT NOT NULL,
+                cliente_email TEXT,
                 fecha_entrada DATE NOT NULL,
                 fecha_salida DATE NOT NULL,
-                precio_por_noche REAL NOT NULL,
+                total_personas INTEGER NOT NULL DEFAULT 1,
+                id_pago INTEGER NOT NULL,
                 checked_in BOOLEAN DEFAULT 1,
                 checked_out BOOLEAN DEFAULT 0,
-                fecha_creacion DATETIME DEFAULT (datetime('now')),
+                estado TEXT NOT NULL DEFAULT 'En curso',
                 notas TEXT,
+                FOREIGN KEY (id_pago) REFERENCES ingresos(id)
                 FOREIGN KEY (numero_hab) REFERENCES habitaciones(numero)
             );
             """)
@@ -433,14 +432,21 @@ def insertar_datos_muestra():
             ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@example.com', date('now', '+1 day'), date('now', '+3 days'), 11, 300.00, 0, 0, 'Pendiente', ''),
             ('301', 'Doble', 4, 'Carlos López', 'carlos@example.com', date('now', '+2 days'), date('now', '+4 days'), 12, 160.00, 0, 0, 'Pendiente', ''),
             ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@example.com', date('now', '+5 days'), date('now', '+7 days'), 13, 600.00, 0, 0, 'Pendiente', ''),
-            ('103', 'Individual', 7, 'Carmen García', 'carmen@example.com', date('now', '+10 days'), date('now', '+12 days'), 14, 100.00, 0, 0, 'Pendiente', '');
+            ('103', 'Individual', 7, 'Carmen García', 'carmen@example.com', date('now', '+10 days'), date('now', '+12 days'), 14, 100.00, 0, 0, 'Pendiente', ''),
+            ('101', 'Doble', 8, 'Luis Pérez', 'luis@example.com', date('now', '-7 days'), date('now', '-5 days'), 15, 160.00, 1, 1, 'Completada', 'Estancia finalizada sin incidencias'),
+            ('203', 'Suite', 9, 'Elena Torres', 'elena@example.com', date('now', '-12 days'), date('now', '-10 days'), 16, 300.00, 1, 1, 'Completada', ''),
+            ('102', 'Individual', 10, 'Mario Díaz', 'mario@example.com', date('now', '-3 days'), date('now', '-1 day'), 17, 50.00, 0, 0, 'Cancelada', 'Cancelada por el cliente'),
+            ('301', 'Doble', 11, 'Ana Ruiz', 'ana.ruiz@example.com', date('now', '+4 days'), date('now', '+6 days'), 18, 160.00, 0, 0, 'Cancelada', 'Cancelada por no show');
             """)
 
             # Insertar Walk-ins
             cursor.execute("""
-            INSERT INTO walk_ins (nombres, apellidos, tipo_doc, numero_doc, telefono, email, numero_hab, fecha_entrada, fecha_salida, precio_por_noche, checked_in, checked_out) VALUES
-            ('Pedro', 'Ramírez', 'Cédula', '001-7890123-4', '809-666-6666', 'pedro@example.com', '302', date('now'), date('now', '+1 day'), 80.00, 1, 0),
-            ('Laura', 'Morales', 'Pasaporte', 'P456789', '809-777-7777', 'laura@example.com', '402', date('now', '+3 days'), date('now', '+5 days'), 150.00, 0, 0);
+            INSERT INTO walk_ins (
+                numero_hab, cliente_nombre, cliente_email, fecha_entrada, fecha_salida,
+                total_personas, id_pago, checked_in, checked_out, estado, notas
+            ) VALUES
+            ('302', 'Pedro Ramírez', 'pedro@example.com', date('now'), date('now', '+1 day'), 2, 4, 1, 0, 'En curso', 'Walk-in de ejemplo'),
+            ('103', 'Cliente anterior', 'clienteanterior@example.com', date('now', '-25 days'), date('now', '-24 days'), 1, 9, 1, 0, 'Finalizado', 'Walk-in del mes anterior');
             """)
 
             # Insertar Turnos
@@ -619,25 +625,23 @@ def kpi_alojamiento(): #retorna la cantidad de habitaciones ocupadas y la cantid
             cursor.execute("""
             SELECT 
                 'Personas alojadas hoy' as concepto,
-                COUNT(*) as total_personas,
-                SUM(capacidad) as capacidad_total
+                COUNT(*) as habitaciones_ocupadas,
+                SUM(total_personas) as personas_alojadas
             FROM (
                 -- Reservas con check-in realizado y sin check-out
-                SELECT r.numero_hab, h.capacidad
+                SELECT r.numero_hab, r.total_personas
                 FROM reservas r
-                JOIN habitaciones h ON r.numero_hab = h.numero
                 WHERE date('now') BETWEEN r.fecha_entrada AND r.fecha_salida
                 AND r.checked_in = 1 AND r.checked_out = 0
-                
+
                 UNION ALL
-                
+
                 -- Walk-ins con check-in realizado y sin check-out
-                SELECT w.numero_hab, h.capacidad
+                SELECT w.numero_hab, w.total_personas
                 FROM walk_ins w
-                JOIN habitaciones h ON w.numero_hab = h.numero
                 WHERE date('now') BETWEEN w.fecha_entrada AND w.fecha_salida
                 AND w.checked_in = 1 AND w.checked_out = 0
-            );
+            ) ocupadas;
             """)
             resultado = cursor.fetchone()
             return (resultado[0] if resultado[0] is not None else 0, 
@@ -651,6 +655,8 @@ def kpi_alojamiento(): #retorna la cantidad de habitaciones ocupadas y la cantid
             print(f'Error al calcular alojamiento: {e}')
         finally:
             conn.close()
+
+print(kpi_alojamiento())
 
 def total_checkin(): #retorna el total de checkin del dia de hoy
     conn = conectar_bd()
@@ -828,12 +834,11 @@ def obtener_reservas():
                 r.cliente_email as "Email",
                 r.fecha_entrada as "Entrada",
                 r.fecha_salida as "Salida",
-                h.capacidad as "Personas Alojadas",
-                (r.precio_por_noche * (julianday(r.fecha_salida) - julianday(r.fecha_entrada))) as "Total",
+                r.total_personas as "Personas Alojadas",
+                r.monto_pago as "Total",
                 r.estado as "Estado"
                 
             FROM reservas r
-            JOIN habitaciones h ON r.numero_hab = h.numero
             ORDER BY r.fecha_entrada DESC;
             """)
             resultado = cursor.fetchall()
@@ -1180,7 +1185,7 @@ def guardar_reserva(tipo, datos, clave = None):
         try:
             if tipo == "agregar": #agregar reserva
                 cursor.execute("""
-                INSERT INTO reservas(numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email, fecha_entrada, fecha_salida, id_pago, monto_pago, notas)
+                INSERT INTO reservas(numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email, fecha_entrada, fecha_salida, total_personas,id_pago, monto_pago, notas)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (datos))
             else: #editar reserva

@@ -537,7 +537,6 @@ class GestorReservas(ctk.CTkFrame):
                 self.habitacion.set("")
                 return
             messagebox.showinfo("Habitaciones disponibles",f"{cant_habitaciones} habitaciones disponibles:\n {string_disponibles}")
-            
 
         def limpiar():
             if hasattr(self,"contenedor_resumen"):
@@ -738,6 +737,7 @@ class GestorReservas(ctk.CTkFrame):
                 email_cliente,
                 fecha_entrada,
                 fecha_salida,
+                self.acompanantes.get() + 1,
                 id_pago,
                 pago_total,
                 self.notas.get().strip()
@@ -948,19 +948,6 @@ class GestorReservas(ctk.CTkFrame):
                             text_color=OSCURO
                             ).pack(anchor = 'w',  padx = 15)          
 
-        #     for habitacion in hab_disp:
-        #         if habitacion[1] != tipo_hab:
-        #             continue
-        #         cant_habitaciones += 1
-        #         string_disponibles += f"Habitación {habitacion[0]} en el {habitacion[2]}\n"
-
-
-        #     if cant_habitaciones == 0:
-        #         messagebox.showinfo("Habitaciones disponibles", "No hay habitaciones disponibles para esas fechas")
-        #         self.habitacion.set("")
-        #         return
-        #     messagebox.showinfo("Habitaciones disponibles",f"{cant_habitaciones} habitaciones disponibles:\n {string_disponibles}")
-
         def limpiar():
             self.fecha_entrada.set("")
             self.fecha_salida.set("")
@@ -1045,7 +1032,12 @@ class GestorReservas(ctk.CTkFrame):
         separador.pack(fill="x", pady=10)
 
         #tabla de reservas
-        self.tabla_reservas(master=self.reservas)
+        self.contenedor_tabla = ctk.CTkFrame(self.reservas, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
+        self.contenedor_tabla.pack(fill='both', expand=True, padx = 12, pady = 12)
+
+        reservas = RESERVAS()
+        data_tabla = [ENCABEZADOS_RESERVAS] + [r for r in reservas if r[8] in ('Pendiente', 'En curso')]
+        self.tabla_reservas(data=data_tabla)
 
     def historial_reservas(self):
         for widget in self.reservas.winfo_children():
@@ -1069,7 +1061,12 @@ class GestorReservas(ctk.CTkFrame):
         separador.pack(fill="x", pady=10)
 
         #tabla de reservas
-        self.tabla_reservas(master=self.reservas)
+        self.contenedor_tabla = ctk.CTkFrame(self.reservas, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
+        self.contenedor_tabla.pack(fill='both', expand=True, padx = 12, pady = 12)
+        
+        reservas = RESERVAS()
+        data_tabla = [ENCABEZADOS_RESERVAS] + [r for r in reservas if r[8] in ('Cancelada', 'Completada')]
+        self.tabla_reservas(data=data_tabla)
 
     def barra_busqueda(self, master):
         contenedor = ctk.CTkFrame(master=master, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=12, height=62)
@@ -1126,65 +1123,82 @@ class GestorReservas(ctk.CTkFrame):
                             fill=None
                             )
         
-    def tabla_reservas(self, master):
-        contenedor = ctk.CTkFrame(master = master, fg_color='transparent',border_color='#eee', border_width=1, corner_radius=12)
-        contenedor.pack(fill = 'x', expand = True, anchor = 'n')
+    def tabla_reservas(self, data):
+        for w in self.contenedor_tabla.winfo_children():
+             w.destroy()
 
-        contenedor.rowconfigure(index=(0,1), weight=1)
-        contenedor.columnconfigure(index=0, weight=1)
+        frame = ctk.CTkFrame(master=self.contenedor_tabla, fg_color='transparent')
+        frame.pack(fill = 'both', expand = True, padx = 12, pady = 12)
 
-        data = [ENCABEZADOS_RESERVAS] + [r for r in RESERVAS()]
+        self.celdas = []
+        for f, fila in enumerate(data):
+            fila_widgets = []
+            for c, texto in enumerate(fila):
+                  #coloreado de las lineas
+                  if f == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                  elif f % 2 == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+                  else:
+                    bg = GRIS_CLARO4
+                    fg = OSCURO
+                    font = (FUENTE, 12)
 
-        tabla_reservas = CTkTable(master = contenedor, 
-                                  row = len(data),
-                                  column= len(ENCABEZADOS_RESERVAS),
-                                  values=data,
-                                  colors=[CLARO, '#eee'],
-                                  color_phase='horizontal',
-                                  hover_color=MUTE,
-                                  border_width=0,
-                                  anchor='w',
-                                  )
-        tabla_reservas.grid(column = 0, row = 0, sticky = 'new', padx = 12, pady = 12)
-        tabla_reservas.edit_row(0, font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold'))
-        tabla_reservas.edit_column(0, width = 65)
+                  if c == 5 and f != 0:
+                    try:
+                          texto = datetime.strftime(datetime.strptime(texto, '%Y-%m-%d'),'%d-%m-%Y')
+                    except ValueError:
+                        pass
+                
+                  if c == 4 and f != 0:
+                    try:
+                          texto = datetime.strftime(datetime.strptime(texto, '%Y-%m-%d'),'%d-%m-%Y')
+                    except ValueError:
+                        pass
 
-        #resaltado segun estado
-        colores = {
-            'Cancelada': VERDE_CLARO, 
-            'Completada': ROJO_CLARO, 
-            'Sucia': AMARILLO_CLARO,
-        }
+                  lbl = ctk.CTkLabel(frame, text=texto, anchor='center', width = 140, height = 28, fg_color=bg, text_color=fg, font=font)
+                  lbl.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
+                  
+                  frame.grid_columnconfigure(c, weight=1)
 
-        estado_col = ENCABEZADOS_RESERVAS.index('✅ Estado')
+                  #borde encabezado
+                  if f == 0:
+                    borde = ctk.CTkFrame(master=frame, fg_color=GRIS)
+                    borde.grid(row=f*2+1, column = c, sticky = 'ew')
+                    borde.grid_propagate(False)
+                    borde.configure(height = 2)
 
-        for i, habitacion in enumerate(RESERVAS(), start = 1):
-            estado = habitacion[estado_col - 0]
-            if estado in colores:
-                fg= colores[estado]
-                tabla_reservas.edit(row=i, column=estado_col, fg_color=fg)
+                  #bind capturando fila
+                #   if f > 0:
+                #     lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion(fila))
+                  fila_widgets.append(lbl)
+            self.celdas.append(fila_widgets)
 
-        btn_frame = ctk.CTkFrame(contenedor, fg_color="transparent")
-        btn_frame.grid(column = 0, row = 1, sticky = 'new', padx = 12, pady = 12)
+        # btn_frame = ctk.CTkFrame(contenedor, fg_color="transparent")
+        # btn_frame.grid(column = 0, row = 1, sticky = 'new', padx = 12, pady = 12)
 
-        btn_ver = Boton(master=btn_frame,
-                           texto='Editar',
-                           color=MAMEY,
-                           hover=MAMEY2,
-                           tamano_texto=12,
-                           altura=28,
-                           padx=2,
-                           pady=2,
-                           fill=None,
-                           )
+        # btn_ver = Boton(master=btn_frame,
+        #                    texto='Editar',
+        #                    color=MAMEY,
+        #                    hover=MAMEY2,
+        #                    tamano_texto=12,
+        #                    altura=28,
+        #                    padx=2,
+        #                    pady=2,
+        #                    fill=None,
+        #                    )
 
-        btn_fd = Boton(master=btn_frame,
-                           texto='Cancelar',
-                           color=ROJO,
-                           hover=ROJO2,
-                           tamano_texto=12,
-                           altura=28,
-                           padx=2,
-                           pady=2,
-                           fill=None,
-                           )
+        # btn_fd = Boton(master=btn_frame,
+        #                    texto='Cancelar',
+        #                    color=ROJO,
+        #                    hover=ROJO2,
+        #                    tamano_texto=12,
+        #                    altura=28,
+        #                    padx=2,
+        #                    pady=2,
+        #                    fill=None,
+        #                    )
