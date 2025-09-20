@@ -1097,7 +1097,7 @@ def guardar_tipo_habitacion(tipo, datos, clave):
         finally:
             conn.close()
 
-def hab_disponibles(fecha_entrada, fecha_salida):
+def hab_disponibles(fecha_entrada, fecha_salida, tipo = "Todos", capacidad_minima = None):
     query = """
             SELECT h.*
             FROM habitaciones h
@@ -1141,7 +1141,16 @@ def hab_disponibles(fecha_entrada, fecha_salida):
                 datos_hab.append(habitacion[5])
 
                 resultado.append(datos_hab)
-            return resultado
+            if tipo != "Todos":
+                resultado = [habitacion for habitacion in resultado if habitacion[1] == tipo]
+            if capacidad_minima is not None:
+                resultado = [habitacion for habitacion in resultado if habitacion[3] >= capacidad_minima]
+
+            return resultado #retorna una lista con los siguientes datos:
+            #0: el numero de la habitacion
+            #1: el tipo de habitación
+            #2: la ubicacion de la habitacion
+            #3: la capacidad de la habitacion
         except sql.Error as e:
             print(f'Error al obtener habitaciones: {e}')
         finally:
