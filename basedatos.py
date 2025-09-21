@@ -1201,3 +1201,41 @@ def guardar_reserva(tipo, datos, clave = None):
             return False, f"Error al guardar datos: {e}"
         finally:
             conn.close()
+
+def buscar_reserva(texto, estado):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT 
+                r.id as "ID",
+                r.numero_hab as "Hab.",
+                r.cliente_nombre as "Cliente",
+                r.cliente_email as "Email",
+                r.fecha_entrada as "Entrada",
+                r.fecha_salida as "Salida",
+                r.total_personas as "Personas Alojadas",
+                r.monto_pago as "Total",
+                r.estado as "Estado"
+                
+                FROM reservas r
+                WHERE 
+                    (? = 'Todos' OR r.estado = ?)
+                    AND (
+                        r.id LIKE ? 
+                        OR r.numero_hab LIKE ?
+                        OR r.cliente_nombre LIKE ?
+                        OR r.cliente_email LIKE ?
+                        OR r.fecha_entrada LIKE ?
+                        OR r.fecha_salida LIKE ?
+                    )
+                ORDER BY r.fecha_entrada DESC;
+            """, (estado, estado, f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%'))
+            
+            resultado = cursor.fetchall()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al buscar: {e}')
+        finally:
+            conn.close()
