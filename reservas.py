@@ -561,13 +561,44 @@ class GestorReservas(ctk.CTkFrame):
             self.gastos_adicionales.set(0.00)
             self.descuento.set(0)
         
-        def modal_reservas(tipo):
+        btn_disponibilidad = Boton(master=btn_frame,
+                           texto='🔍 Verificar Disponibilidad',
+                           padx=2,
+                           pady=2,
+                           fill=None,
+                           metodo=mostrar_disponibilidad
+                           )
+        
+        btn_confirmar = Boton(master=btn_frame,
+                           texto='✅ Confirmar Reserva',
+                           color=VERDE1,
+                           hover=VERDE2,
+                           padx=2,
+                           pady=2,
+                           fill=None,
+                           metodo=lambda:self.modal_reservas(tipo="pago")
+                           )
+
+        btn_limpiar = Boton(master=btn_frame,
+                           texto='🔄 Limpiar',
+                           color=PRIMARIO,
+                           hover=ROJO,
+                           padx=2,
+                           pady=2,
+                           fill=None,
+                           metodo=limpiar
+                           )
+
+    def modal_reservas(self, tipo):
             titulo_ventana = ""
             titulo_modal = ""
             match tipo:
                 case "pago":
                     titulo_ventana = "Confirmar Reserva"
                     titulo_modal = "💳 Registrar Pago - Nueva Reserva"
+                case "ver":
+                    titulo_ventana = "Ver Reserva"
+                    titulo_modal = "📋 Detalle de Reserva"
 
             dialogo = ctk.CTkToplevel(self, fg_color=CLARO)
             dialogo.title(titulo_ventana)
@@ -588,34 +619,8 @@ class GestorReservas(ctk.CTkFrame):
             match tipo:
                 case "pago":
                     self.crear_formulario_pago(master = dialogo)
-
-        btn_disponibilidad = Boton(master=btn_frame,
-                           texto='🔍 Verificar Disponibilidad',
-                           padx=2,
-                           pady=2,
-                           fill=None,
-                           metodo=mostrar_disponibilidad
-                           )
-        
-        btn_confirmar = Boton(master=btn_frame,
-                           texto='✅ Confirmar Reserva',
-                           color=VERDE1,
-                           hover=VERDE2,
-                           padx=2,
-                           pady=2,
-                           fill=None,
-                           metodo=lambda:modal_reservas(tipo="pago")
-                           )
-
-        btn_limpiar = Boton(master=btn_frame,
-                           texto='🔄 Limpiar',
-                           color=PRIMARIO,
-                           hover=ROJO,
-                           padx=2,
-                           pady=2,
-                           fill=None,
-                           metodo=limpiar
-                           )
+                case "ver":
+                    self.ver_reserva(master=dialogo)
 
     def crear_formulario_pago(self, master):
         if not self.cliente_actual:
@@ -1045,8 +1050,8 @@ class GestorReservas(ctk.CTkFrame):
         btn_frame = ctk.CTkFrame(self.contenedor_tabla, fg_color="transparent")
         btn_frame.pack(fill = 'x', anchor = 'n', padx = 12, pady = 12)
 
-        btn_editar = Boton(master=btn_frame,
-                           texto='Editar',
+        btn_ver = Boton(master=btn_frame,
+                           texto='Ver reserva',
                            color=MAMEY,
                            hover=MAMEY2,
                            tamano_texto=12,
@@ -1054,6 +1059,7 @@ class GestorReservas(ctk.CTkFrame):
                            padx=2,
                            pady=2,
                            fill=None,
+                           metodo= lambda: self.modal_reservas("ver")
                            )
 
         btn_cancelar = Boton(master=btn_frame,
@@ -1065,6 +1071,7 @@ class GestorReservas(ctk.CTkFrame):
                            padx=2,
                            pady=2,
                            fill=None,
+                           metodo=self.cancelar_reserva
                            )
 
     def historial_reservas(self):
@@ -1095,6 +1102,21 @@ class GestorReservas(ctk.CTkFrame):
         reservas = RESERVAS()
         data_tabla = [ENCABEZADOS_RESERVAS] + [r for r in reservas if r[8] in ('Cancelada', 'Completada')]
         self.tabla_reservas(data=data_tabla)
+
+        btn_frame = ctk.CTkFrame(self.contenedor_tabla, fg_color="transparent")
+        btn_frame.pack(fill = 'x', anchor = 'n', padx = 12, pady = 12)
+
+        btn_ver = Boton(master=btn_frame,
+                           texto='Ver reserva',
+                           color=MAMEY,
+                           hover=MAMEY2,
+                           tamano_texto=12,
+                           altura=28,
+                           padx=2,
+                           pady=2,
+                           fill=None,
+                           metodo= lambda: self.modal_reservas("ver")
+                           )
 
     def barra_busqueda(self, master, tipo_tabla):
         contenedor = ctk.CTkFrame(master=master, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=12, height=62)
@@ -1160,14 +1182,30 @@ class GestorReservas(ctk.CTkFrame):
     def seleccion_reserva(self, fila):
         if fila == 0:
             return
-        valores = [w.cget('text') for w in self.celdas[fila]]
+        valores = [w.cget('text') for w, _ in self.celdas[fila]]
         self.selec = valores
         print(self.selec)
 
         #resaltado
         for f, fila_widgets in enumerate(self.celdas):
-            for w in fila_widgets:
-                w.configure(fg_color = AZUL_CLARO if f == fila else ('transparent' if f%2 == 0 else GRIS_CLARO4))
+            for w, es_badge in fila_widgets:
+                if es_badge:
+                    continue
+    
+                if f == fila:
+                    w.configure(fg_color = AZUL_CLARO)
+                else:
+                    if f == 0:
+                        default_bg = 'transparent'
+                        default_text = OSCURO
+                    elif f % 2 == 0:
+                        default_bg = 'transparent'
+                        default_text = OSCURO
+                    else:
+                        default_bg = GRIS_CLARO4
+                        default_text = OSCURO
+
+                    w.configure(fg_color=default_bg, text_color=default_text)
 
     def tabla_reservas(self, data):
         for w in self.contenedor_tabla.winfo_children():
@@ -1247,10 +1285,9 @@ class GestorReservas(ctk.CTkFrame):
                     borde.configure(height = 2)
 
                   #bind capturando fila
-                  if f > 0:
-                    lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion_reserva(fila))
-                  fila_widgets.append(lbl)
-            self.celdas.append(fila_widgets)
+                  
+                  fila_widgets.append(widget_celda)
+            self.celdas.append(fila_widgets) 
 
     def buscar(self, tipo_tabla):
         busqueda = self.busqueda_var.get().strip()
@@ -1282,3 +1319,58 @@ class GestorReservas(ctk.CTkFrame):
         else:
             data_tabla = [ENCABEZADOS_RESERVAS] + [r for r in reservas if r[8] in ('Cancelada', 'Completada')]
             self.tabla_reservas(data=data_tabla)
+
+    def ver_reserva(self, master):
+        if not self.selec:
+            messagebox.showerror("Error", "Debe seleccionar una reserva")
+            master.destroy()
+            return
+        
+        reserva = basedatos.ver_reserva(id=self.selec[0])
+        descripcion = ['ID de Reserva', 'Número de Habitación', 'Tipo de Habitación', 'Nombre del Cliente', 'Correo del Cliente', 'Fecha de Entrada', 'Fecha de Salida', 'Total de Huéspedes', 'Monto Pagado', 'Estado', 'Fecha de reserva', 'Notas adicionales']
+
+        contenedor = ctk.CTkFrame(master=master, fg_color=GRIS_CLARO4)
+        contenedor.pack(fill = 'both', expand = True, padx = 16, pady = (0,10))
+        
+        contenedor.columnconfigure(index=(0,1,2,3), weight = 1, uniform= 'k')
+
+        for i, (desc, valor) in enumerate(zip(descripcion, reserva)):
+            if i == len(descripcion) - 1:
+                fila = (i // 2) + 1  # Nueva fila al final
+                label_desc = ctk.CTkLabel(contenedor, text=desc + ": ", text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold'))
+                label_val = ctk.CTkLabel(contenedor, text=str(valor), text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT))
+                label_desc.grid(row=fila, column=0, padx=(8,2), pady=4, sticky="e")
+                label_val.grid(row=fila, column=1, columnspan=3, padx=(2,8), pady=4, sticky="w")
+            else:
+                fila = i // 2
+                columna = (i % 2) * 2  # Multiplica por 2 porque cada valor ocupa dos columnas (label y valor)
+                label_desc = ctk.CTkLabel(contenedor, text=desc + ": ", text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold'))
+                label_val = ctk.CTkLabel(contenedor, text=str(valor), text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT))
+                label_desc.grid(row=fila, column=columna, padx=(8,2), pady=4, sticky="e")
+                label_val.grid(row=fila, column=columna+1, padx=(2,8), pady=4, sticky="w")
+
+    def cancelar_reserva(self):
+        if not self.selec:
+            messagebox.showerror("Error", "Debe seleccionar una reserva")
+            return
+        
+        id = self.selec[0]
+        if self.selec[8].lower() != 'pendiente':
+            messagebox.showerror("Error", "No es posible cancelar esta reserva")
+            return
+        
+        confirmacion = messagebox.askyesno("Cancelar", f"¿Está seguro que desea cancelar esta reserva?\n Reserva No. {id} para el cliente {self.selec[2]} en la habitación {self.selec[1]}\nNOTA: El cliente no obtendrá reembolso.")
+
+        if confirmacion:
+            razon_cancelacion = ctk.CTkInputDialog(title="Razón", text="Digite el motivo de la cancelación:")
+            fue_cancelada, mensaje = basedatos.modificar_estado_reserva(estado='Cancelada', id=id, motivo = razon_cancelacion.get_input())
+            if not fue_cancelada:
+                messagebox.showerror("Error", mensaje)
+                return
+            messagebox.showinfo("Reserva cancelada", "La reserva fue cancelada exitosamente")
+
+        #actualizar tabla
+        from settings import RESERVAS
+        reservas = RESERVAS()
+        data_tabla = [ENCABEZADOS_RESERVAS] + [r for r in reservas if r[8] in ('Pendiente', 'En curso')]
+        self.tabla_reservas(data=data_tabla)

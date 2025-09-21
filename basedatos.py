@@ -656,8 +656,6 @@ def kpi_alojamiento(): #retorna la cantidad de habitaciones ocupadas y la cantid
         finally:
             conn.close()
 
-print(kpi_alojamiento())
-
 def total_checkin(): #retorna el total de checkin del dia de hoy
     conn = conectar_bd()
     if conn:
@@ -1237,5 +1235,58 @@ def buscar_reserva(texto, estado):
             return resultado
         except sql.Error as e:
             print(f'Error al buscar: {e}')
+        finally:
+            conn.close()
+
+def ver_reserva(id):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT * FROM reservas
+            WHERE id = ?;
+            """, (id,))
+            resultado = cursor.fetchone()
+
+            return [resultado[0], #id de la reserva
+                    resultado[1], #numero de habitacion
+                    resultado[2], #tipo de habitacion
+                    resultado[4], #nombre del cliente
+                    resultado[5], #correo del cliente
+                    resultado[6], #fecha de entrada
+                    resultado[7], #fecha de salida
+                    resultado[8], #total de huespedes
+                    resultado[10], #monto pagado
+                    resultado[13], #estado
+                    resultado[14], #fecha de reserva
+                    resultado[15] #notas
+                    ]
+        except sql.Error as e:
+            print(f'Error al obtener reserva: {e}')
+        finally:
+            conn.close()
+
+def modificar_estado_reserva(estado, id, motivo = None):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            if motivo is None:
+                cursor.execute("""
+                    UPDATE reservas
+                    SET estado = ? 
+                    WHERE id = ?
+                    """, (estado, id))
+            else:
+                cursor.execute("""
+                    UPDATE reservas
+                    SET estado = ?, notas = ? 
+                    WHERE id = ?
+                    """, (estado, motivo, id))
+            conn.commit()
+            return True, "Datos modificados exitosamente"
+        except sql.Error as e:
+            return False, f'Error al modificar estado de reserva: {e}'
         finally:
             conn.close()
