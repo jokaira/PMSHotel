@@ -4,6 +4,7 @@ import customtkinter as ctk #UI
 #ajustes y funciones
 from settings import *
 import basedatos
+from func_clases import *
 
 #módulos
 from dashboard import *
@@ -112,7 +113,7 @@ class Header(ctk.CTkFrame):
 class SideBar(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master = master, corner_radius=0, fg_color=OSCURO, 
-             width = 260)
+             width = 240)
         
         self.place(x= 0, y = 42, relheight=1)
         self.pack_propagate(False)
@@ -149,7 +150,7 @@ class MainFrame(ctk.CTkFrame):
         self.columnconfigure(index=0, weight=1, uniform='b')
 
         self.titulo = ctk.CTkFrame(self, fg_color=PRIMARIO,corner_radius= 10, height = 39)
-        self.titulo.grid(row = 0, column = 0, sticky = 'nsew', padx = (16 + 260, 16), pady = (16,8))
+        self.titulo.grid(row = 0, column = 0, sticky = 'nsew', padx = (16 + 240, 16), pady = (16,8))
 
         self.label_titulo =ctk.CTkLabel(self.titulo, 
                      text=texto,
@@ -160,7 +161,7 @@ class MainFrame(ctk.CTkFrame):
 
         #contenedor de los módulos
         self.modulos = ctk.CTkFrame(self, fg_color='transparent')
-        self.modulos.grid(row = 1, column = 0, sticky = 'nsew', padx = (16 + 260, 16), pady = (8,16+43))
+        self.modulos.grid(row = 1, column = 0, sticky = 'nsew', padx = (16 + 240, 16), pady = (8,16+43))
         self.modulos.pack_propagate(False)
 
 if __name__ == '__main__':

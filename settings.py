@@ -31,7 +31,7 @@ BTN_HEAD = ['📊 Dashboard', '👥 Gestor de Clientes', '🏠 Gestión de Habit
 
 #letras
 FUENTE = 'Arial'
-TAMANO_TEXTO_DEFAULT = 14
+TAMANO_TEXTO_DEFAULT = 13
 TAMANO_1 = 16
 TAMANO_2 = 28
 TAMANO_3 = 24
