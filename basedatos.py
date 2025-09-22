@@ -946,7 +946,7 @@ def obtener_tipos_habitaciones():
         finally:
             conn.close()
 
-def buscar_habitacion(texto, estado): #el query de consulta para buscar cliente
+def buscar_habitacion(texto, estado): #el query de consulta para buscar
     conn = conectar_bd()
     if conn:
         cursor = conn.cursor()
@@ -1264,6 +1264,30 @@ def ver_reserva(id):
                     ]
         except sql.Error as e:
             print(f'Error al obtener reserva: {e}')
+        finally:
+            conn.close()
+
+def kpi_housekeeping():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT 
+                estado,
+                COUNT(*) as cantidad
+            FROM habitaciones
+            WHERE estado IN ('Sucia', 'Limpiando', 'Disponible')
+            GROUP BY estado;
+            """)
+            consulta = cursor.fetchall()
+            resultado = dict(consulta)
+            for estado in ['Sucia', 'Limpiando', 'Disponible']:
+                if estado not in resultado:
+                    resultado[estado] = 0
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener tipos de habitaciones: {e}')
         finally:
             conn.close()
 

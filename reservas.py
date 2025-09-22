@@ -628,7 +628,7 @@ class GestorReservas(ctk.CTkFrame):
             master.destroy()
             return
 
-        habitacion = self.habitacion.get().strip() #TODO: agregar validación para verificar si la habitacion está disponible para reserva
+        habitacion = self.habitacion.get().strip() 
         tipo_hab = self.tipo_habitacion.get().strip()
         nombre_cliente = str(self.cliente_actual[1] + " " +self.cliente_actual[2])
         id_cliente = self.cliente_actual[0]
@@ -893,7 +893,7 @@ class GestorReservas(ctk.CTkFrame):
                         border_width=1, height=35
                         ).grid(row = 1, column = 3, sticky = 'nsew')
         
-        def mostrar_disponibilidad(): #TODO: adaptarlo al nuevo submodulo 
+        def mostrar_disponibilidad(): 
             fecha_entrada = self.fecha_entrada.get().strip()
             fecha_salida = self.fecha_salida.get().strip()
             tipo_hab = self.tipo_habitacion.get().strip()

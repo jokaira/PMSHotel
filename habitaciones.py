@@ -478,7 +478,7 @@ class GestorHabitaciones(ctk.CTkFrame):
                       command=guardar,
                         ).grid(row = 6, column = 2, pady = 12)
 
-    #metodos de la segunda pestaña #TODO: trabajar esta parte
+    #metodos de la segunda pestaña
     def tipos_habitaciones(self):
         for widget in self.habitaciones.winfo_children():
             widget.destroy()

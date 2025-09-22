@@ -97,3 +97,23 @@ def KPI_RESERVAS(): return {
 ENCABEZADOS_RESERVAS = ['ID', '🏠 Hab.', '👤 Cliente', '📧 Email', '📅 Entrada', '📅 Salida', '👥 Personas Alojadas','💰 Total', '✅ Estado']
 
 def RESERVAS(): return basedatos.obtener_reservas()
+
+#Logística
+def KPI_HOUSEKEEPING(): return {
+    'sucias': {'titulo': 'Habitaciones Sucias', 
+                 'cantidad': basedatos.kpi_housekeeping()['Sucia'],
+                 'subtitulo': 'Sucias', 
+                 'color': ROJO, 'col': 0},
+    'limpiando': {'titulo': 'Habitiaciones Limpiándose', 
+                 'cantidad': basedatos.kpi_housekeeping()['Limpiando'],
+                 'subtitulo': 'Limpiando', 
+                 'color': MAMEY, 'col': 1},
+    'ocupadas': {'titulo': 'Habitaciones Ocupadas', 
+                'cantidad': basedatos.kpi_alojamiento()[1],
+                'subtitulo': 'Ocupadas', 
+                'color': AZUL, 'col': 2},
+    'limpias': {'titulo': 'Habitaciones Limpias', 
+                 'cantidad': basedatos.kpi_housekeeping()['Disponible'], #TODO: Crear funcion en base de datos
+                 'subtitulo': 'Limpias', 
+                 'color': VERDE2, 'col': 3},
+}
