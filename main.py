@@ -11,6 +11,7 @@ from dashboard import *
 from clientes import * 
 from habitaciones import *
 from reservas import *
+from logistica import *
 
 class App(ctk.CTk):
     def __init__(self):
@@ -35,6 +36,7 @@ class App(ctk.CTk):
         self.clientes = None
         self.habitaciones = None
         self.reservas = None
+        self.logistica = None
 
         #menu lateral con botones
         self.sidebar = SideBar(self)
@@ -51,6 +53,9 @@ class App(ctk.CTk):
         self.btn_reservas = self.sidebar.crear_boton_nav(BTN_HEAD[3], metodo=self.mostrar_reservas)
         self.btn_reservas.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
 
+        self.btn_logistica = self.sidebar.crear_boton_nav(BTN_HEAD[4], metodo=self.mostrar_logistica)
+        self.btn_logistica.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
+
         #cada vez que se agregue un módulo, hay que agregar su correspondiente botón y método
 
         #dashboard por default
@@ -66,6 +71,7 @@ class App(ctk.CTk):
         self.btn_clientes.configure(fg_color = 'transparent')
         self.btn_habitaciones.configure(fg_color = 'transparent')
         self.btn_reservas.configure(fg_color = 'transparent')
+        self.btn_logistica.configure(fg_color = 'transparent')
     
     def mostrar_dashboard(self):
         self.limpiar_mainframe()
@@ -94,6 +100,13 @@ class App(ctk.CTk):
         self.main_frame.label_titulo.configure(text = BTN_HEAD[3])
         self.btn_reservas.configure(fg_color = '#34495e')
         self.reservas = GestorReservas(self.main_frame.modulos)
+
+    def mostrar_logistica(self):
+        self.limpiar_mainframe()
+        self.inactivar_botones()
+        self.main_frame.label_titulo.configure(text = BTN_HEAD[4])
+        self.btn_logistica.configure(fg_color = '#34495e')
+        self.logistica = GestorLogistica(self.main_frame.modulos)
 
 class Header(ctk.CTkFrame):
     def __init__(self, master):
