@@ -113,7 +113,11 @@ def KPI_HOUSEKEEPING(): return {
                 'subtitulo': 'Ocupadas', 
                 'color': AZUL, 'col': 2},
     'limpias': {'titulo': 'Habitaciones Limpias', 
-                 'cantidad': basedatos.kpi_housekeeping()['Disponible'], #TODO: Crear funcion en base de datos
+                 'cantidad': basedatos.kpi_housekeeping()['Disponible'],
                  'subtitulo': 'Limpias', 
                  'color': VERDE2, 'col': 3},
 }
+
+ENCABEZADOS_HOUSEKEEPING = ['ID', 'Habitación', 'Empleado asignado', 'Fecha de Asignación', 'Fecha de Finalización','Estado']
+
+def PLAN_HOUSEKEEPING(): return basedatos.obtener_plan_limpieza()

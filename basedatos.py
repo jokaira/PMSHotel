@@ -316,6 +316,7 @@ def crear_tablas():
                 id_personal INTEGER NOT NULL,
                 fecha_asignacion DATE DEFAULT (date('now')),
                 completado BOOLEAN DEFAULT 0,
+                fecha_finalizacion DATE DEFAULT NULL,
                 FOREIGN KEY (habitacion) REFERENCES habitaciones(numero),
                 FOREIGN KEY (id_personal) REFERENCES personal(id)
             );
@@ -380,14 +381,14 @@ def insertar_datos_muestra():
             INSERT INTO habitaciones (numero, tipo_id, estado, ubicacion, capacidad) VALUES
             ('101', 2, 'Ocupada', '1er Piso', 2),
             ('102', 1, 'Ocupada', '1er Piso', 1),
-            ('103', 1, 'Sucia', '1er Piso', 1),
+            ('103', 1, 'Limpiando', '1er Piso', 1),
             ('201', 3, 'Disponible', '2do Piso', 4),
             ('202', 2, 'Mantenimiento', '2do Piso', 2),
             ('203', 3, 'Ocupada', '2do Piso', 4),
             ('301', 2, 'Disponible', '3er Piso', 2),
             ('302', 2, 'Ocupada', '3er Piso', 2),
             ('401', 4, 'Disponible', '4to Piso', 6),
-            ('402', 3, 'Sucia', '4to Piso', 4);
+            ('402', 3, 'Limpiando', '4to Piso', 4);
             """)
 
             # Insertar Personal
@@ -397,7 +398,7 @@ def insertar_datos_muestra():
             ('EMP002', 'Carlos', 'Méndez', 'Técnico', 'Mantenimiento', 18.00, '2023-02-20', '809-222-2222', 'carlos.mendez@hotel.com'),
             ('EMP003', 'Ana', 'García', 'Recepcionista', 'Front Desk', 12.00, '2023-03-10', '809-333-3333', 'ana.garcia@hotel.com'),
             ('EMP004', 'Roberto', 'Silva', 'Técnico', 'Mantenimiento', 18.00, '2023-04-05', '809-444-4444', 'roberto.silva@hotel.com'),
-            ('EMP005', 'Carmen', 'Vega', 'Camarera', 'Housekeeping', 10.00, '2023-05-12', '809-555-5555', 'carmen.vega@hotel.com');
+            ('EMP005', 'Carmen', 'Vega', 'Conserje', 'Housekeeping', 10.00, '2023-05-12', '809-555-5555', 'carmen.vega@hotel.com');
             """)
 
             # Insertar Ingresos
@@ -490,12 +491,10 @@ def insertar_datos_muestra():
 
             # Insertar Housekeeping Plan
             cursor.execute("""
-            INSERT INTO housekeeping_plan (habitacion, id_personal, fecha_asignacion, completado) VALUES
-            ('103', 1, date('now'), 0),
-            ('201', 5, date('now'), 1),
-            ('302', 1, date('now', '+1 day'), 0),
-            ('402', 5, date('now', '+1 day'), 0),
-            ('101', 1, date('now', '+2 days'), 0);
+            INSERT INTO housekeeping_plan (habitacion, id_personal, fecha_asignacion, completado, fecha_finalizacion) VALUES
+            ('103', 1, date('now'), 0, NULL),
+            ('201', 5, date('now'), 1, date('now')),
+            ('402', 5, date('now', '+1 day'), 0, NULL);
             """)
 
             # Insertar Check-ins y Check-outs
@@ -538,7 +537,6 @@ def insertar_datos_muestra():
             ('Azúcar', 25, 15, 'kg', 3.50, 'Dulces del Sur'),
             ('Leche', 40, 25, 'litro', 2.80, 'Lácteos Frescos');
             """)
-
             
             conn.commit()
             print('Datos de muestra insertados correctamente.')
@@ -1312,5 +1310,87 @@ def modificar_estado_reserva(estado, id, motivo = None):
             return True, "Datos modificados exitosamente"
         except sql.Error as e:
             return False, f'Error al modificar estado de reserva: {e}'
+        finally:
+            conn.close()
+
+def obtener_hab_sucias():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT * FROM habitaciones
+            WHERE estado = 'Sucia';
+            """)
+            consulta = cursor.fetchall()
+            resultado = []
+            for habitacion in consulta:
+                resultado.append(f'{habitacion[1]}, {habitacion[4]}')
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener tipos de habitaciones: {e}')
+        finally:
+            conn.close()
+
+def obtener_personal_housekeeping():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT * FROM personal
+            WHERE area = 'Housekeeping'
+            ORDER BY codigo;
+            """)
+            consulta = cursor.fetchall()
+            resultado = []
+            for empleado in consulta:
+                resultado.append(f'{empleado[1]} - {empleado[2]} {empleado[3]}')
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener empleados: {e}')
+        finally:
+            conn.close()
+
+def obtener_plan_limpieza():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT 
+                hp.id AS "ID",
+                h.numero AS "Habitación",
+                th.nombre AS "Tipo",
+                h.ubicacion AS "Ubicación",
+                p.codigo AS "Código Personal",
+                p.nombre AS "Nombre Personal",
+                p.apellido AS "Apellido Personal",
+                hp.fecha_asignacion AS "Fecha Asignación",
+                hp.completado AS "Completado",
+                hp.fecha_finalizacion AS "Fecha Finalización"
+            FROM housekeeping_plan hp
+            JOIN habitaciones h ON hp.habitacion = h.numero
+            JOIN tipos_habitacion th ON h.tipo_id = th.id
+            JOIN personal p ON hp.id_personal = p.id
+            WHERE 
+                (hp.completado = 0)
+                OR
+                (hp.completado = 1 AND hp.fecha_finalizacion = date('now'))
+            ORDER BY hp.fecha_asignacion DESC;
+            """)
+            consulta = cursor.fetchall()
+            resultado = []
+            for fila in consulta:
+                resultado.append([fila[0], #ID
+                                  f'{fila[1]} ({fila[2]}, {fila[3]})', #Habitación (número, tipo y ubicacion)
+                                  f'{fila[4]} - {fila[5]} {fila[6]}', #Empleado (código y nombre completo)
+                                  fila[7], #Fecha de asignación
+                                  fila[9] if fila[9] is not None else 'N/A', #Fecha de finalización
+                                  'En proceso' if fila[8] == 0 else 'Completado' #Estado de la limpieza
+                                  ])
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener datos: {e}')
         finally:
             conn.close()
