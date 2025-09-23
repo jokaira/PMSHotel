@@ -62,13 +62,16 @@ class CTkDatePicker(ctk.CTkFrame):
 
         super().__init__(master = master, fg_color='transparent')
 
+        self.columnconfigure(0, weight=1)  
+        self.columnconfigure(1, weight=0)  
+
         self.date_entry = ctk.CTkEntry(self, corner_radius=0, height=32, border_width=1)
-        # self.date_entry.grid(row=0, column=0, sticky="ew", padx=0, pady=5)
-        self.date_entry.pack(side = 'left', fill = 'x', expand = True, padx=0, pady=5)
+        self.date_entry.grid(row=0, column=0, sticky="ew", padx=0, pady=5)
+        # self.date_entry.pack(side = 'left', fill = 'x', expand = True, padx=0, pady=5)
 
         self.calendar_button = ctk.CTkButton(self, text="📅", fg_color=AZUL, hover_color=AZUL2, text_color=BLANCO,font = ('Arial', 24),width=20, command=self.open_calendar, corner_radius=0)
-        # self.calendar_button.grid(row=0, column=1, sticky="ew", padx=0, pady=5)
-        self.calendar_button.pack(side = 'left', fill = 'x', expand = False, padx=0, pady=5)
+        self.calendar_button.grid(row=0, column=1, sticky="ew", padx=0, pady=5)
+        # self.calendar_button.pack(side = 'left', fill = None, expand = False, padx=0, pady=5)
 
         self.popup = None
         self.selected_date = None
