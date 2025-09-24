@@ -10,6 +10,8 @@ class GestorLogistica(ctk.CTkFrame):
 
         #variables
         self.selec = None
+        self.hab_sucia = ctk.StringVar()
+        self.personal_housekeeping = ctk.StringVar()
 
         #pestañas
         self.contenedor_pestanas = ctk.CTkFrame(master=self, fg_color='transparent')
@@ -104,9 +106,11 @@ class GestorLogistica(ctk.CTkFrame):
         #habitacion
         ctk.CTkLabel(master=frame_entrys, text="Habitación:", font=(FUENTE, TAMANO_TEXTO_DEFAULT), text_color=OSCURO).pack(side = 'left', anchor = 'w', padx = (0,15))
         hab_sucias = basedatos.obtener_hab_sucias() if basedatos.obtener_hab_sucias() else ['No hay habitaciones sucias']
+        self.hab_sucia.set(hab_sucias[0])
 
         ctk.CTkComboBox(master=frame_entrys,
                         values = hab_sucias,
+                        variable= self.hab_sucia,
                         corner_radius=8,
                         button_color=GRIS_CLARO,
                         button_hover_color=GRIS,
@@ -121,9 +125,11 @@ class GestorLogistica(ctk.CTkFrame):
         
         #personal
         ctk.CTkLabel(master=frame_entrys, text="Asignar a:", font=(FUENTE, TAMANO_TEXTO_DEFAULT), text_color=OSCURO).pack(side = 'left', anchor = 'w', padx = (0,15))
-        emp_hk = basedatos.obtener_personal_housekeeping() 
+        emp_hk = basedatos.obtener_personal_housekeeping()
+        self.personal_housekeeping.set(emp_hk[0])
         ctk.CTkComboBox(master=frame_entrys,
                         values = emp_hk,
+                        variable=self.personal_housekeeping,
                         corner_radius=8,
                         button_color=GRIS_CLARO,
                         button_hover_color=GRIS,
@@ -137,7 +143,7 @@ class GestorLogistica(ctk.CTkFrame):
                         border_width=1, height=35, width = 200).pack(side = 'left', anchor = 'w', padx = (0,15))
         
         #boton
-        btn_asignar = Boton(master=frame_entrys,texto='🔄 Asignar Limpieza') #TODO: definir método
+        btn_asignar = Boton(master=frame_entrys,texto='🔄 Asignar Limpieza', metodo=self.asignar_limpieza)
 
         frame_plan = ctk.CTkFrame(master=self.logistica, 
                                      fg_color='transparent',
@@ -168,6 +174,7 @@ class GestorLogistica(ctk.CTkFrame):
                            padx=2,
                            pady=2,
                            fill=None,
+                           metodo=self.completar_limpieza
                            )
     
     def plan_housekeeping(self, data): 
@@ -277,3 +284,51 @@ class GestorLogistica(ctk.CTkFrame):
                         default_text = OSCURO
 
                     w.configure(fg_color=default_bg, text_color=default_text)        
+
+    def asignar_limpieza(self):
+        if self.hab_sucia.get().strip() == 'No hay habitaciones sucias':
+            messagebox.showerror('Error','No hay habitaciones pendientes de asignar')
+            return
+        
+        nro_hab = self.hab_sucia.get().strip()[:3]
+        cod_emp = self.personal_housekeeping.get().strip()[:6]
+
+        data = [
+            nro_hab,
+            basedatos.id_empleado(cod_emp)
+        ]
+        
+        limpieza_asignada, mensaje_limpieza = basedatos.asignar_limpieza(datos=data)
+        if not limpieza_asignada:
+            messagebox.showerror('Error', mensaje_limpieza)
+
+        messagebox.showinfo("Limpieza asignada", "La limpieza fue asignada exitosamente")
+
+        #actualizar tabla
+        from settings import PLAN_HOUSEKEEPING
+        self.plan_housekeeping(data=[ENCABEZADOS_HOUSEKEEPING] + [p for p in PLAN_HOUSEKEEPING()])
+
+    def completar_limpieza(self):
+        if self.selec is None:
+            messagebox.showerror('Error','Debe seleccionar una habitacion en proceso de limpieza')
+            return
+        
+        data = [
+            self.selec[0],
+            self.selec[1][:3]
+        ]
+
+        limpieza_completada, mensaje_limpieza = basedatos.completar_limpieza(datos=data)
+        if not limpieza_completada:
+            messagebox.showerror('Error', mensaje_limpieza)
+
+        messagebox.showinfo("Limpieza completada", "La limpieza fue marcada como completada exitosamente")
+
+        #actualizar tabla
+        from settings import PLAN_HOUSEKEEPING, KPI_HOUSEKEEPING
+        for w in self.kpis.winfo_children():
+             w.destroy()
+
+        crear_tarjetas_kpi(master=self.kpis, dict=KPI_HOUSEKEEPING())
+        self.plan_housekeeping(data=[ENCABEZADOS_HOUSEKEEPING] + [p for p in PLAN_HOUSEKEEPING()])
+

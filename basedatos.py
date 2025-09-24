@@ -1184,7 +1184,7 @@ def guardar_reserva(tipo, datos, clave = None):
                 INSERT INTO reservas(numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email, fecha_entrada, fecha_salida, total_personas,id_pago, monto_pago, notas)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (datos))
-            else: #editar reserva
+            else: #editar reserva. las reservas no se editan
                 # cursor.execute("""
                 # UPDATE tipos_habitacion
                 # SET nombre = ?, capacidad = ?, precio_base = ?, descripcion = ? 
@@ -1392,5 +1392,66 @@ def obtener_plan_limpieza():
             return resultado
         except sql.Error as e:
             print(f'Error al obtener datos: {e}')
+        finally:
+            conn.close()
+
+def id_empleado(codigo):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT id FROM personal
+            WHERE codigo = ?
+            """, (codigo,))
+            resultado = cursor.fetchone()
+            return resultado[0]
+        except sql.Error as e:
+            print(f'Error al obtener empleados: {e}')
+        finally:
+            conn.close()
+
+def asignar_limpieza(datos):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO housekeeping_plan(habitacion, id_personal)
+                VALUES (?, ?)
+            """, (datos))
+    
+            cursor.execute("""
+                UPDATE habitaciones
+                SET estado = 'Limpiando'
+                WHERE numero = ?
+            """,(datos[0],))
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
+
+def completar_limpieza(datos):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE housekeeping_plan
+                SET completado = 1, fecha_finalizacion = date('now')
+                WHERE id = ?
+            """, (datos[0],))
+    
+            cursor.execute("""
+                UPDATE habitaciones
+                SET estado = 'Disponible'
+                WHERE numero = ?
+            """,(datos[1],))
+            conn.commit()
+            return True, "Datos actualizados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al actializar datos: {e}"
         finally:
             conn.close()
