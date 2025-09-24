@@ -20,7 +20,7 @@ class App(ctk.CTk):
         ctk.set_appearance_mode('light')
         self.title("PMS Hotel")
         self.geometry(f'{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0')
-     
+        
         #inicia la verificacion de las tablas de la base de datos
         basedatos.conectar_bd()
         basedatos.verificar_tablas()

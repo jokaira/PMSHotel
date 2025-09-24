@@ -331,17 +331,29 @@ def crear_tablas():
                 item TEXT NOT NULL,
                 stock_actual INTEGER NOT NULL DEFAULT 0,
                 stock_minimo INTEGER NOT NULL DEFAULT 0,
-                unidad TEXT DEFAULT 'unidad',
+                unidad TEXT NOT NULL,
                 precio_unitario REAL DEFAULT 0,
-                proveedor TEXT,
-                fecha_ultima_compra DATE,
                 notas TEXT
             );
             """)
             conn.commit()
             print('15. Tabla "inventario" creada exitosamente')
 
-            
+            # transacciones de inventario
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS transacciones_inventario (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_inventario INTEGER NOT NULL,
+                tipo TEXT NOT NULL, -- 'entrada' o 'salida'
+                cantidad INTEGER NOT NULL,
+                fecha DATETIME DEFAULT (datetime('now')),
+                area TEXT NOT NULL,
+                motivo TEXT,
+                FOREIGN KEY (id_inventario) REFERENCES inventario(id)
+            );
+            """)
+            conn.commit()
+            print('16. Tabla "transacciones_inventario" creada exitosamente')
 
             conn.close()
             print('Todas las tablas creadas exitosamente')
@@ -527,17 +539,30 @@ def insertar_datos_muestra():
 
             # Insertar Inventario
             cursor.execute("""
-            INSERT INTO inventario (item, stock_actual, stock_minimo, unidad, precio_unitario, proveedor) VALUES
-            ('Sábanas', 120, 80, 'unidad', 15.00, 'Textiles del Caribe'),
-            ('Toallas', 200, 150, 'unidad', 8.00, 'Textiles del Caribe'),
-            ('Jabón', 300, 200, 'unidad', 2.50, 'Suministros Hoteleros'),
-            ('Shampoo', 250, 180, 'unidad', 3.00, 'Suministros Hoteleros'),
-            ('Papel higiénico', 400, 300, 'rollo', 1.50, 'Papeles del Norte'),
-            ('Café', 50, 30, 'kg', 12.00, 'Café Premium'),
-            ('Azúcar', 25, 15, 'kg', 3.50, 'Dulces del Sur'),
-            ('Leche', 40, 25, 'litro', 2.80, 'Lácteos Frescos');
+            INSERT INTO inventario (item, stock_actual, stock_minimo, unidad, precio_unitario) VALUES
+            ('Sábanas', 120, 80, 'unidad', 15.00),
+            ('Toallas', 200, 150, 'unidad', 8.00),
+            ('Jabón', 300, 200, 'unidad', 2.50),
+            ('Shampoo', 250, 180, 'unidad', 3.00),
+            ('Papel higiénico', 400, 300, 'rollo', 1.50),
+            ('Café', 50, 30, 'kg', 12.00),
+            ('Azúcar', 25, 15, 'kg', 3.50),
+            ('Leche', 40, 25, 'litro', 2.80);
             """)
             
+            # Insertar datos de muestra en transacciones de inventario
+            cursor.execute("""
+            INSERT INTO transacciones_inventario (id_inventario, tipo, cantidad, area, motivo) VALUES
+            (1, 'Entrada', 50, 'Admin', 'Compra de sábanas'),
+            (2, 'Salida', 20, 'Housekeeping', 'Entrega de toallas a habitaciones'),
+            (3, 'Entrada', 100, 'Admin', 'Compra de jabón'),
+            (4, 'Salida', 10, 'Housekeeping', 'Reposición de shampoo en habitaciones'),
+            (5, 'Entrada', 200, 'Admin', 'Compra de papel higiénico'),
+            (6, 'Salida', 5, 'Cocina', 'Consumo de café en desayuno'),
+            (7, 'Entrada', 10, 'Admin', 'Compra de azúcar'),
+            (8, 'Salida', 8, 'Cocina', 'Consumo de leche en cocina');
+            """)
+
             conn.commit()
             print('Datos de muestra insertados correctamente.')
         except sql.Error as e:
@@ -567,10 +592,13 @@ def limpiar_datos():
             cursor.execute("DELETE FROM habitaciones;")
             cursor.execute("DELETE FROM tipos_habitacion;")
             cursor.execute("DELETE FROM clientes;")
+            cursor.execute("DELETE FROM transacciones_inventario;")
 
             # Verificar que todas las tablas estén vacías
             cursor.execute("""
             SELECT 'inventario' as tabla, COUNT(*) as registros FROM inventario
+            UNION ALL
+            SELECT 'transacciones_inventario' as tabla, COUNT(*) as registros FROM transacciones_inventario
             UNION ALL
             SELECT 'eventos', COUNT(*) FROM eventos
             UNION ALL
@@ -605,7 +633,7 @@ def limpiar_datos():
                 'clientes', 'tipos_habitacion', 'habitaciones', 'reservas', 'personal',
                 'turnos', 'mantenimiento_preventivo', 'tickets_mantenimiento', 
                 'mantenimiento_correctivo', 'walk_ins', 'checkins_checkouts',
-                'buffet', 'eventos', 'housekeeping_plan', 'inventario', 'ingresos'
+                'buffet', 'eventos', 'housekeeping_plan', 'inventario', 'ingresos', 'transacciones_inventario'
             );
             """)
             conn.commit()
@@ -1339,7 +1367,7 @@ def obtener_personal_housekeeping():
         try:
             cursor.execute("""
             SELECT * FROM personal
-            WHERE area = 'Housekeeping'
+            WHERE area = 'Housekeeping' AND estado = 'Activo'
             ORDER BY codigo;
             """)
             consulta = cursor.fetchall()
@@ -1453,5 +1481,32 @@ def completar_limpieza(datos):
             return True, "Datos actualizados exitosamente"
         except sql.Error as e:
             return False, f"Error al actializar datos: {e}"
+        finally:
+            conn.close()
+
+def obtener_inventario():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT * FROM inventario
+            ORDER BY id;
+            """)
+            consulta = cursor.fetchall()
+            resultado = []
+            for articulo in consulta:
+                resultado.append([
+                    articulo[0], #ID
+                    articulo[1], #Descripcion
+                    articulo[2], #stock actual
+                    articulo[4], #unidad de medida
+                    articulo[5], #precio unitario
+                    'OK' if articulo[3] <= articulo[2] else ('Agotado' if articulo[2] == 0 else 'Bajo'), #nivel de stock
+                    articulo[6] if articulo[6] is not None else '', #Notas
+                ])
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener artículos: {e}')
         finally:
             conn.close()

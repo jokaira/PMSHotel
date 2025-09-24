@@ -121,3 +121,7 @@ def KPI_HOUSEKEEPING(): return {
 ENCABEZADOS_HOUSEKEEPING = ['ID', 'Habitación', 'Empleado asignado', 'Fecha de Asignación', 'Fecha de Finalización','Estado']
 
 def PLAN_HOUSEKEEPING(): return basedatos.obtener_plan_limpieza()
+
+ENCABEZADOS_INVENTARIO = ['ID', 'Descripción', 'Stock Actual', 'Unidad de Medida', 'Precio Unitario ($)', 'Nivel de Stock','Notas']
+
+def INVENTARIO(): return basedatos.obtener_inventario()
