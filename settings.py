@@ -125,3 +125,7 @@ def PLAN_HOUSEKEEPING(): return basedatos.obtener_plan_limpieza()
 ENCABEZADOS_INVENTARIO = ['ID', 'Descripción', 'Stock Actual', 'Unidad de Medida', 'Precio Unitario ($)', 'Nivel de Stock','Notas']
 
 def INVENTARIO(): return basedatos.obtener_inventario()
+
+ENCABEZADO_TRANS_INVENT = ['ID', 'Artículo', 'Tipo de Transacción', 'Cantidad', 'Unidad de Medida', 'Fecha y Hora', 'Área', 'Motivo']
+
+def TRANS_INVENTARIO(): return basedatos.obtener_transacciones_inventario()

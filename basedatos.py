@@ -1510,3 +1510,30 @@ def obtener_inventario():
             print(f'Error al obtener artículos: {e}')
         finally:
             conn.close()
+
+def obtener_transacciones_inventario():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT 
+                ti.id AS "ID Transacción",
+                i.item AS "Artículo",
+                ti.tipo AS "Tipo",
+                ti.cantidad AS "Cantidad",
+                i.unidad as "Unidad",
+                ti.fecha AS "Fecha y Hora",
+                ti.area AS "Área",
+                ti.motivo AS "Motivo"
+            FROM transacciones_inventario ti
+            JOIN inventario i ON ti.id_inventario = i.id
+            ORDER BY ti.fecha DESC
+            LIMIT 10;
+            """)
+            resultado = cursor.fetchall()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener artículos: {e}')
+        finally:
+            conn.close()

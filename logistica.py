@@ -181,7 +181,7 @@ class GestorLogistica(ctk.CTkFrame):
         for w in self.contenedor_tabla.winfo_children():
              w.destroy()
 
-        frame = ctk.CTkFrame(master=self.contenedor_tabla, fg_color='transparent')
+        frame = ctk.CTkScrollableFrame(master=self.contenedor_tabla, fg_color='transparent')
         frame.pack(fill = 'both', expand = True, padx = 12, pady = 12)
 
         #resaltado segun estado
@@ -407,14 +407,91 @@ class GestorLogistica(ctk.CTkFrame):
                                               corner_radius=10)
         historial_transacciones.pack(fill = 'x', anchor = 'n', pady = (0,10))
 
+        ctk.CTkLabel(master=historial_transacciones, text='Últimas Transacciones', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).pack(anchor = 'w', padx = 15, pady = (15,12))
+
+        self.contenedor_tabla2 = ctk.CTkFrame(historial_transacciones, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
+        self.contenedor_tabla2.pack(fill='both', expand=True, padx = 12, pady = 12)
+
+        #historial de transacciones
+        self.tabla_trans([ENCABEZADO_TRANS_INVENT] + [t for t in TRANS_INVENTARIO()])
+
     def tabla_inventario(self, data): 
         for w in self.contenedor_tabla.winfo_children():
              w.destroy()
 
-        frame = ctk.CTkFrame(master=self.contenedor_tabla, fg_color='transparent')
+        frame = ctk.CTkScrollableFrame(master=self.contenedor_tabla, fg_color='transparent')
         frame.pack(fill = 'both', expand = True, padx = 12, pady = 12)
 
         #resaltado segun estado
+        colores = {
+                    'OK': VERDE1, 
+                    'Bajo': MAMEY,
+                    'Agotado': ROJO,
+                  }
+
+        self.celdas = []
+        for f, fila in enumerate(data):
+            fila_widgets = []
+            for c, texto in enumerate(fila):
+                  #coloreado de las lineas
+                  if f == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                  elif f % 2 == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+                  else:
+                    bg = GRIS_CLARO4
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+
+                  #resaltado de estado con "pilas"
+                  if texto in colores:
+                      cont_pila = ctk.CTkFrame(master=frame, fg_color=bg, corner_radius=0)
+                      cont_pila.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
+
+                      pila = ctk.CTkFrame(master=cont_pila, fg_color=colores[texto], corner_radius=15, height = 28)
+                      pila.pack(fill = 'y')
+
+                      lbl = ctk.CTkLabel(master=pila, text=texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
+                      lbl.pack(expand = True, padx = 8, pady = 2)
+
+                      if f > 0:
+                        lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion(fila))
+
+                      widget_celda = (lbl, True)
+                  else:
+                    lbl = ctk.CTkLabel(frame, text=texto, anchor='center', width = 140, height = 28, fg_color=bg, text_color=fg, font=font)
+                    lbl.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
+
+                    if f > 0:
+                      lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion(fila))
+                    widget_celda = (lbl, False)
+                  
+                  frame.grid_columnconfigure(c, weight=1)
+
+                  #borde encabezado
+                  if f == 0:
+                    borde = ctk.CTkFrame(master=frame, fg_color=GRIS)
+                    borde.grid(row=f*2+1, column = c, sticky = 'ew')
+                    borde.grid_propagate(False)
+                    borde.configure(height = 2)
+
+                  #bind capturando fila
+                  
+                  fila_widgets.append(widget_celda)
+            self.celdas.append(fila_widgets) 
+
+    def tabla_trans(self, data): 
+        for w in self.contenedor_tabla2.winfo_children():
+             w.destroy()
+
+        frame = ctk.CTkScrollableFrame(master=self.contenedor_tabla2, fg_color='transparent')
+        frame.pack(fill = 'both', expand = True, padx = 12, pady = 12)
+
+        #resaltado segun estado (INUTIL ACÁ)
         colores = {
                     'OK': VERDE1, 
                     'Bajo': MAMEY,

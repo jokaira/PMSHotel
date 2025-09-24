@@ -58,7 +58,7 @@ class GestorHabitaciones(ctk.CTkFrame):
 
         self.barra = self.barra_buscar()
         self.contenedor_tabla2 = ctk.CTkFrame(self.habitaciones, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
-        self.contenedor_tabla2.pack(fill='both', expand=True, padx = 12, pady = 12)
+        self.contenedor_tabla2.pack(fill='both', expand=True, pady = 12)
 
         self.tabla_habitaciones([ENCABEZADOS_HABITACIONES] + [h for h in HABITACIONES()])
         self.btn_gest.configure(fg_color = AZUL, hover_color = AZUL,text_color = BLANCO)
@@ -148,7 +148,7 @@ class GestorHabitaciones(ctk.CTkFrame):
                     'Fuera de servicio': MUTE
                   }
 
-        frame = ctk.CTkFrame(master=self.contenedor_tabla2, fg_color='transparent')
+        frame = ctk.CTkScrollableFrame(master=self.contenedor_tabla2, fg_color='transparent')
         frame.pack(fill = 'both', expand = True, padx = 12, pady = 12)
 
         self.celdas = []

@@ -78,7 +78,7 @@ class GestorClientes(ctk.CTkFrame):
         for w in self.contenedor_tabla.winfo_children():
              w.destroy()
 
-        frame = ctk.CTkFrame(master=self.contenedor_tabla, fg_color='transparent')
+        frame = ctk.CTkScrollableFrame(master=self.contenedor_tabla, fg_color='transparent')
         frame.pack(fill = 'both', expand = True, padx = 12, pady = 12)
 
         self.celdas = []
