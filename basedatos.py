@@ -1523,9 +1523,7 @@ def obtener_transacciones_inventario():
                 ti.tipo AS "Tipo",
                 ti.cantidad AS "Cantidad",
                 i.unidad as "Unidad",
-                ti.fecha AS "Fecha y Hora",
-                ti.area AS "Área",
-                ti.motivo AS "Motivo"
+                ti.fecha AS "Fecha y Hora"
             FROM transacciones_inventario ti
             JOIN inventario i ON ti.id_inventario = i.id
             ORDER BY ti.fecha DESC
@@ -1535,5 +1533,37 @@ def obtener_transacciones_inventario():
             return resultado
         except sql.Error as e:
             print(f'Error al obtener artículos: {e}')
+        finally:
+            conn.close()
+
+def buscar_articulo(texto):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT * FROM inventario
+                WHERE 
+                        id LIKE ?
+                        OR item LIKE ?
+                        OR unidad LIKE ?
+                        OR precio_unitario LIKE ?
+                ORDER BY id DESC;
+            """, (f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%'))
+            consulta = cursor.fetchall()
+            resultado = []
+            for articulo in consulta:
+                resultado.append([
+                    articulo[0], #ID
+                    articulo[1], #Descripcion
+                    articulo[2], #stock actual
+                    articulo[4], #unidad de medida
+                    articulo[5], #precio unitario
+                    'OK' if articulo[3] <= articulo[2] else ('Agotado' if articulo[2] == 0 else 'Bajo'), #nivel de stock
+                    articulo[6] if articulo[6] is not None else '', #Notas
+                ])
+            return resultado
+        except sql.Error as e:
+            print(f'Error al buscar: {e}')
         finally:
             conn.close()

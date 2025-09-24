@@ -12,10 +12,11 @@ class GestorLogistica(ctk.CTkFrame):
         self.selec = None
         self.hab_sucia = ctk.StringVar()
         self.personal_housekeeping = ctk.StringVar()
+        self.busqueda_var = ctk.StringVar()
 
         #pestañas
         self.contenedor_pestanas = ctk.CTkFrame(master=self, fg_color='transparent')
-        self.contenedor_pestanas.pack(anchor = 'n',fill = 'x', pady = (0,10))
+        self.contenedor_pestanas.pack(anchor = 'n',fill = 'x', pady = (0,8))
         self.boton_pestanas(master=self.contenedor_pestanas)
 
         self.logistica = ctk.CTkFrame(master=self, fg_color='transparent', border_color=GRIS_CLARO3, corner_radius=10, border_width=0)
@@ -98,10 +99,10 @@ class GestorLogistica(ctk.CTkFrame):
                                      )
         frame_asignar.pack(fill = 'x', anchor = 'n')
         
-        ctk.CTkLabel(master=frame_asignar, text="📋 Asignar Limpieza", font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold'), text_color=OSCURO).pack(anchor = 'w', padx = 15, pady = (15,12))
+        ctk.CTkLabel(master=frame_asignar, text="📋 Asignar Limpieza", font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold'), text_color=OSCURO).pack(anchor = 'w', padx = 15, pady = (12,10))
         
         frame_entrys = ctk.CTkFrame(master=frame_asignar, fg_color='transparent')
-        frame_entrys.pack(fill = 'x', anchor = 'n', padx = 15, pady = (0,12))
+        frame_entrys.pack(fill = 'x', anchor = 'n', padx = 15, pady = (0,9))
 
         #habitacion
         ctk.CTkLabel(master=frame_entrys, text="Habitación:", font=(FUENTE, TAMANO_TEXTO_DEFAULT), text_color=OSCURO).pack(side = 'left', anchor = 'w', padx = (0,15))
@@ -151,13 +152,13 @@ class GestorLogistica(ctk.CTkFrame):
                                      border_width=1,
                                      corner_radius=12
                                      )
-        frame_plan.pack(fill = 'x', anchor = 'n', pady = 10)
+        frame_plan.pack(fill = 'both', anchor = 'n', pady = 8)
 
-        ctk.CTkLabel(master=frame_plan, text="📊 Plan de Limpieza del Día", font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold'), text_color=OSCURO).pack(anchor = 'w', padx = 15, pady = (15,12))
+        ctk.CTkLabel(master=frame_plan, text="📊 Plan de Limpieza del Día", font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold'), text_color=OSCURO).pack(anchor = 'w', padx = 15, pady = (15,5))
 
         #contenedor de tabla del plan de housekeeping
         self.contenedor_tabla = ctk.CTkFrame(frame_plan, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
-        self.contenedor_tabla.pack(fill='both', expand=True, padx = 12, pady = 12)
+        self.contenedor_tabla.pack(fill='x', expand=True, padx = 12, pady = (0,12))
 
         #plan de housekeeping
         self.crear_tabla(data=[ENCABEZADOS_HOUSEKEEPING] + [p for p in PLAN_HOUSEKEEPING()])
@@ -182,7 +183,7 @@ class GestorLogistica(ctk.CTkFrame):
              w.destroy()
 
         frame = ctk.CTkScrollableFrame(master=self.contenedor_tabla, fg_color='transparent')
-        frame.pack(fill = 'both', expand = True, padx = 12, pady = 12)
+        frame.pack(fill = 'both', padx = 12, pady = 12)
 
         #resaltado segun estado
         colores = {
@@ -283,7 +284,7 @@ class GestorLogistica(ctk.CTkFrame):
                         default_bg = GRIS_CLARO4
                         default_text = OSCURO
 
-                    w.configure(fg_color=default_bg, text_color=default_text)        
+                    w.configure(fg_color=default_bg, text_color=default_text)       
 
     def asignar_limpieza(self):
         if self.hab_sucia.get().strip() == 'No hay habitaciones sucias':
@@ -336,7 +337,7 @@ class GestorLogistica(ctk.CTkFrame):
         crear_tarjetas_kpi(master=self.kpis, dict=KPI_HOUSEKEEPING())
         self.crear_tabla(data=[ENCABEZADOS_HOUSEKEEPING] + [p for p in PLAN_HOUSEKEEPING()])
 
-    def inventario(self):
+    def inventario(self): #TODO: crear modales de agregar item y hacer transacción
         for w in self.logistica.winfo_children():
              w.destroy()
         self.btn_inventario.configure(fg_color = AZUL, hover_color = AZUL,text_color = BLANCO) 
@@ -350,40 +351,28 @@ class GestorLogistica(ctk.CTkFrame):
                                               border_color=GRIS_CLARO3,
                                               border_width=1,
                                               corner_radius=10)
-        inventario_actual.pack(fill = 'x', anchor = 'n', pady = 10)
+        inventario_actual.pack(fill = 'x', anchor = 'n', pady = 8)
 
-        ctk.CTkLabel(master=inventario_actual, text='Suministros actuales', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).pack(anchor = 'w', padx = 15, pady = (15,12))
+        ctk.CTkLabel(master=inventario_actual, text='Suministros actuales', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).pack(anchor = 'w', padx = 15, pady = (12,8))
 
         frame_busqueda = ctk.CTkFrame(master=inventario_actual, fg_color='transparent')
-        frame_busqueda.pack(fill = 'x', anchor = 'n', padx = 15, pady = (0,12))
+        frame_busqueda.pack(fill = 'x', anchor = 'n', padx = 15, pady = (0,8))
 
         ctk.CTkLabel(master=frame_busqueda, text='Artículo', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT)).pack(side = 'left',anchor = 'w', padx = (0,15))
         ctk.CTkEntry(master=frame_busqueda, placeholder_text='ID o Descripción',
                      placeholder_text_color=GRIS_CLARO2,
+                     textvariable=self.busqueda_var,
                      corner_radius=8,
                      text_color=OSCURO,
                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
                      border_color= GRIS_CLARO2,
-                     border_width=1, height=35).pack(side = 'left',anchor = 'w', padx = (0,15))
-        
-        ctk.CTkLabel(master=frame_busqueda, text='Nivel de stock', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT)).pack(side = 'left',anchor = 'w', padx = (0,15))
-        ctk.CTkComboBox(master=frame_busqueda,values = ['Todos', 'OK', 'Bajo', 'Agotado'],
-                        corner_radius=8,
-                        button_color=GRIS_CLARO,
-                        button_hover_color=GRIS,
-                        dropdown_fg_color=CLARO,
-                        dropdown_hover_color=GRIS_CLARO,
-                        dropdown_text_color=OSCURO,
-                        text_color=OSCURO,
-                        font=(FUENTE, TAMANO_TEXTO_DEFAULT),
-                        dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
-                        border_color= GRIS_CLARO2,
-                        border_width=1, height=35).pack(side = 'left',anchor = 'w', padx = (0,15))
+                     border_width=1, height=35).pack(side = 'left',anchor = 'w', padx = (0,15), fill = 'x', expand = True)
         
         btn_buscar = Boton (master=frame_busqueda,
                            texto = 'Buscar', 
                            fill=None, 
-                           padx=(12,6)
+                           padx=(12,6),
+                           metodo=self.buscar_articulo
                            )
 
         btn_limpiar = Boton(master=frame_busqueda,
@@ -391,29 +380,96 @@ class GestorLogistica(ctk.CTkFrame):
                             color=PRIMARIO,
                             hover=ROJO,
                             padx=6,
+                            fill=None,
+                            metodo=self.limpiar_busqueda_art
+                            )
+        
+        btn_nuevo_item = Boton(master=frame_busqueda,
+                            texto='Agregar artículo',
+                            color=VERDE1,
+                            hover=VERDE2,
+                            padx=6,
+                            fill=None
+                            )
+        
+        btn_nueva_trans = Boton(master=frame_busqueda,
+                            texto='Hacer transacción',
+                            color=MAMEY,
+                            hover=MAMEY2,
+                            padx=6,
                             fill=None
                             )
 
         self.contenedor_tabla = ctk.CTkFrame(inventario_actual, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
-        self.contenedor_tabla.pack(fill='both', expand=True, padx = 12, pady = 12)
+        self.contenedor_tabla.pack(fill='both', expand=True, padx = 12, pady = (0,8))
 
         #inventario actual
         self.tabla_inventario([ENCABEZADOS_INVENTARIO] + [a for a in INVENTARIO()])
 
+        #últimas transacciones
         historial_transacciones = ctk.CTkFrame(master=self.logistica, 
                                               fg_color='transparent',
                                               border_color=GRIS_CLARO3,
                                               border_width=1,
                                               corner_radius=10)
-        historial_transacciones.pack(fill = 'x', anchor = 'n', pady = (0,10))
+        historial_transacciones.pack(fill = 'x', anchor = 'n', pady = (0,8))
 
-        ctk.CTkLabel(master=historial_transacciones, text='Últimas Transacciones', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).pack(anchor = 'w', padx = 15, pady = (15,12))
+        historial_transacciones.rowconfigure(0, weight=0)
+        historial_transacciones.rowconfigure(1, weight=1)
+        historial_transacciones.rowconfigure(0, weight=0)
+        historial_transacciones.columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(master=historial_transacciones, text='Últimas Transacciones', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).grid(row = 0, column = 0, sticky = 'w', padx = 15, pady = (10,8))
 
         self.contenedor_tabla2 = ctk.CTkFrame(historial_transacciones, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
-        self.contenedor_tabla2.pack(fill='both', expand=True, padx = 12, pady = 12)
+        self.contenedor_tabla2.grid(row = 1, column = 0, sticky = 'nsew', padx = 12, pady = (0,8))
 
         #historial de transacciones
         self.tabla_trans([ENCABEZADO_TRANS_INVENT] + [t for t in TRANS_INVENTARIO()])
+
+        frame_btn = ctk.CTkFrame(historial_transacciones, fg_color='transparent')
+        frame_btn.grid(row = 2, column = 0, sticky = 'ew', padx=12, pady=(0,8))
+
+        btn_detalle = Boton (master=frame_btn,
+                           texto = 'Ver detalle', 
+                           fill=None, 
+                           padx=(12,6)
+                           )
+        btn_detalle.pack_configure(side = 'right')
+
+    def seleccion_inv(self, fila):
+        if fila == 0:
+            return
+        valores = [w.cget('text') for w, _ in self.celdas_inv[fila]]
+        self.selec = valores
+        print(self.selec)
+
+        if hasattr(self, "celdas_trans"):
+          for f, fila_widgets in enumerate(self.celdas_trans):
+              for w, es_badge in fila_widgets:
+                  default_bg = 'transparent' if f % 2 == 0 else GRIS_CLARO4
+                  w.configure(fg_color=default_bg, text_color=OSCURO)
+
+        #resaltado
+        for f, fila_widgets in enumerate(self.celdas_inv):
+            for w, es_badge in fila_widgets:
+                if es_badge:
+                    continue
+    
+                if f == fila:
+                    w.configure(fg_color = AZUL_CLARO)
+                else:
+                    if f == 0:
+                        default_bg = 'transparent'
+                        default_text = OSCURO
+                    elif f % 2 == 0:
+                        default_bg = 'transparent'
+                        default_text = OSCURO
+                    else:
+                        default_bg = GRIS_CLARO4
+                        default_text = OSCURO
+
+                    w.configure(fg_color=default_bg, text_color=default_text)
 
     def tabla_inventario(self, data): 
         for w in self.contenedor_tabla.winfo_children():
@@ -429,7 +485,7 @@ class GestorLogistica(ctk.CTkFrame):
                     'Agotado': ROJO,
                   }
 
-        self.celdas = []
+        self.celdas_inv = []
         for f, fila in enumerate(data):
             fila_widgets = []
             for c, texto in enumerate(fila):
@@ -459,7 +515,7 @@ class GestorLogistica(ctk.CTkFrame):
                       lbl.pack(expand = True, padx = 8, pady = 2)
 
                       if f > 0:
-                        lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion(fila))
+                        lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion_inv(fila))
 
                       widget_celda = (lbl, True)
                   else:
@@ -467,7 +523,7 @@ class GestorLogistica(ctk.CTkFrame):
                     lbl.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
 
                     if f > 0:
-                      lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion(fila))
+                      lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion_inv(fila))
                     widget_celda = (lbl, False)
                   
                   frame.grid_columnconfigure(c, weight=1)
@@ -480,25 +536,43 @@ class GestorLogistica(ctk.CTkFrame):
                     borde.configure(height = 2)
 
                   #bind capturando fila
-                  
                   fila_widgets.append(widget_celda)
-            self.celdas.append(fila_widgets) 
+            self.celdas_inv.append(fila_widgets) 
+
+    def seleccion_trans(self,fila):
+        if fila == 0:
+            return
+        valores = [w.cget('text') for w, _ in self.celdas_trans[fila]]
+        self.selec = valores
+        print(self.selec)
+
+        if hasattr(self, "celdas_inv"):
+          for f, fila_widgets in enumerate(self.celdas_inv):
+              for w, es_badge in fila_widgets:
+                  if es_badge:
+                      continue
+                  default_bg = 'transparent' if f % 2 == 0 else GRIS_CLARO4
+                  w.configure(fg_color=default_bg, text_color=OSCURO)
+
+        #resaltado
+        for f, fila_widgets in enumerate(self.celdas_trans):
+             for w, es_badge in fila_widgets:
+              if f == fila:
+                  w.configure(fg_color=AZUL_CLARO)
+              else:
+                  default_bg = 'transparent' if f % 2 == 0 else GRIS_CLARO4
+                  w.configure(fg_color=default_bg, text_color=OSCURO)
 
     def tabla_trans(self, data): 
         for w in self.contenedor_tabla2.winfo_children():
              w.destroy()
 
         frame = ctk.CTkScrollableFrame(master=self.contenedor_tabla2, fg_color='transparent')
-        frame.pack(fill = 'both', expand = True, padx = 12, pady = 12)
+        frame.pack(fill = 'both', expand = True,padx = 12, pady = 12)
+        frame.configure(height = 200)
+        frame.pack_propagate(False)
 
-        #resaltado segun estado (INUTIL ACÁ)
-        colores = {
-                    'OK': VERDE1, 
-                    'Bajo': MAMEY,
-                    'Agotado': ROJO,
-                  }
-
-        self.celdas = []
+        self.celdas_trans = []
         for f, fila in enumerate(data):
             fila_widgets = []
             for c, texto in enumerate(fila):
@@ -515,29 +589,9 @@ class GestorLogistica(ctk.CTkFrame):
                     bg = GRIS_CLARO4
                     fg = OSCURO
                     font = (FUENTE, 12)
-
-                  #resaltado de estado con "pilas"
-                  if texto in colores:
-                      cont_pila = ctk.CTkFrame(master=frame, fg_color=bg, corner_radius=0)
-                      cont_pila.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
-
-                      pila = ctk.CTkFrame(master=cont_pila, fg_color=colores[texto], corner_radius=15, height = 28)
-                      pila.pack(fill = 'y')
-
-                      lbl = ctk.CTkLabel(master=pila, text=texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
-                      lbl.pack(expand = True, padx = 8, pady = 2)
-
-                      if f > 0:
-                        lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion(fila))
-
-                      widget_celda = (lbl, True)
-                  else:
-                    lbl = ctk.CTkLabel(frame, text=texto, anchor='center', width = 140, height = 28, fg_color=bg, text_color=fg, font=font)
-                    lbl.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
-
-                    if f > 0:
-                      lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion(fila))
-                    widget_celda = (lbl, False)
+                
+                  lbl = ctk.CTkLabel(frame, text=texto, anchor='center', width = 140, height = 28, fg_color=bg, text_color=fg, font=font)
+                  lbl.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
                   
                   frame.grid_columnconfigure(c, weight=1)
 
@@ -549,6 +603,20 @@ class GestorLogistica(ctk.CTkFrame):
                     borde.configure(height = 2)
 
                   #bind capturando fila
-                  
-                  fila_widgets.append(widget_celda)
-            self.celdas.append(fila_widgets) 
+                  if f > 0:
+                    lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion_trans(fila))
+                  fila_widgets.append((lbl, False))
+            self.celdas_trans.append(fila_widgets)
+
+    def buscar_articulo(self):
+        busqueda = self.busqueda_var.get().strip()
+        if not busqueda:
+          self.tabla_inventario([ENCABEZADOS_INVENTARIO] + [a for a in INVENTARIO()])
+
+        resultado = basedatos.buscar_articulo(texto=busqueda)
+        data = [ENCABEZADOS_INVENTARIO] + resultado
+        self.tabla_inventario(data=data)
+
+    def limpiar_busqueda_art(self):
+        self.busqueda_var.set('')
+        self.tabla_inventario([ENCABEZADOS_INVENTARIO] + [a for a in INVENTARIO()])
