@@ -12,6 +12,7 @@ from clientes import *
 from habitaciones import *
 from reservas import *
 from logistica import *
+from buffet import *
 
 class App(ctk.CTk):
     def __init__(self):
@@ -37,6 +38,7 @@ class App(ctk.CTk):
         self.habitaciones = None
         self.reservas = None
         self.logistica = None
+        self.buffet = None
 
         #menu lateral con botones
         self.sidebar = SideBar(self)
@@ -52,6 +54,9 @@ class App(ctk.CTk):
 
         self.btn_reservas = self.sidebar.crear_boton_nav(BTN_HEAD[3], metodo=self.mostrar_reservas)
         self.btn_reservas.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
+
+        self.btn_buffet = self.sidebar.crear_boton_nav(BTN_HEAD[5], metodo=self.mostrar_buffet)
+        self.btn_buffet.pack(fill='x', padx=6, pady=6, ipadx=16, ipady=16)
 
         self.btn_logistica = self.sidebar.crear_boton_nav(BTN_HEAD[4], metodo=self.mostrar_logistica)
         self.btn_logistica.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
@@ -100,6 +105,13 @@ class App(ctk.CTk):
         self.main_frame.label_titulo.configure(text = BTN_HEAD[3])
         self.btn_reservas.configure(fg_color = '#34495e')
         self.reservas = GestorReservas(self.main_frame.modulos)
+    
+    def mostrar_buffet(self):
+        self.limpiar_mainframe()
+        self.inactivar_botones()
+        self.main_frame.label_titulo.configure(text = BTN_HEAD[5])
+        self.btn_buffet.configure(fg_color = '#34495e')
+        self.buffet = CotizacionBuffet(self.main_frame.modulos)
 
     def mostrar_logistica(self):
         self.limpiar_mainframe()

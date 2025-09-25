@@ -1567,3 +1567,28 @@ def buscar_articulo(texto):
             print(f'Error al buscar: {e}')
         finally:
             conn.close()
+
+def insertar_cotizacion_buffet(fecha, personas, menu, precio, total, notas):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO buffet (fecha, personas, menu, precio_por_persona, total, notas) VALUES (?, ?, ?, ?, ?, ?)',
+                       (fecha, personas, menu, precio, total, notas))
+        conn.commit()
+        conn.close()
+
+def obtener_cotizaciones_buffet():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM buffet ORDER BY fecha DESC')
+        return cursor.fetchall()
+    return []
+
+def eliminar_cotizacion_buffet(id_):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM buffet WHERE id = ?', (id_,))
+        conn.commit()
+        conn.close()
