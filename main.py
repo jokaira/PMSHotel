@@ -13,6 +13,7 @@ from habitaciones import *
 from reservas import *
 from logistica import *
 from buffet import *
+from frontdesk import *
 
 class App(ctk.CTk):
     def __init__(self):
@@ -39,6 +40,8 @@ class App(ctk.CTk):
         self.reservas = None
         self.logistica = None
         self.buffet = None
+        self.front = None
+        self.front_desk = None
 
         #menu lateral con botones
         self.sidebar = SideBar(self)
@@ -54,6 +57,9 @@ class App(ctk.CTk):
 
         self.btn_reservas = self.sidebar.crear_boton_nav(BTN_HEAD[3], metodo=self.mostrar_reservas)
         self.btn_reservas.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
+
+        self.btn_front = self.sidebar.crear_boton_nav(BTN_HEAD[6], metodo=self.mostrar_front)
+        self.btn_front.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
 
         self.btn_buffet = self.sidebar.crear_boton_nav(BTN_HEAD[5], metodo=self.mostrar_buffet)
         self.btn_buffet.pack(fill='x', padx=6, pady=6, ipadx=16, ipady=16)
@@ -77,6 +83,8 @@ class App(ctk.CTk):
         self.btn_habitaciones.configure(fg_color = 'transparent')
         self.btn_reservas.configure(fg_color = 'transparent')
         self.btn_logistica.configure(fg_color = 'transparent')
+        self.btn_buffet.configure(fg_color = 'transparent')
+        self.btn_front.configure(fg_color = 'transparent')
     
     def mostrar_dashboard(self):
         self.limpiar_mainframe()
@@ -105,6 +113,22 @@ class App(ctk.CTk):
         self.main_frame.label_titulo.configure(text = BTN_HEAD[3])
         self.btn_reservas.configure(fg_color = '#34495e')
         self.reservas = GestorReservas(self.main_frame.modulos)
+
+    def mostrar_front(self):
+        self.limpiar_mainframe()
+        self.inactivar_botones()
+        self.main_frame.label_titulo.configure(text = BTN_HEAD[6])
+        self.btn_front.configure(fg_color = '#34495e')
+        # Crear contenedor Tk puro para evitar conflictos de layout con CTk
+        contenedor_front = tk.Frame(self.main_frame.modulos)
+        contenedor_front.pack(fill='both', expand=True)
+        # Asegurar expansión del contenedor dentro del grid del MainFrame
+        try:
+            contenedor_front.grid_columnconfigure(0, weight=1)
+            contenedor_front.grid_rowconfigure(0, weight=1)
+        except Exception:
+            pass
+        self.front = FrontDeskApp(contenedor_front)
     
     def mostrar_buffet(self):
         self.limpiar_mainframe()

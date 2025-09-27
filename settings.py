@@ -27,7 +27,7 @@ GRIS_CLARO3 = '#EEEEEE'
 GRIS_CLARO4 = '#ecf0f1'
 
 #botones y encabezados
-BTN_HEAD = ['📊 Dashboard', '👥 Gestor de Clientes', '🏠 Gestión de Habitaciones', '📅 Gestor de Reservas', '🧹 Logística',  '🍽️Cotización de Buffet']
+BTN_HEAD = ['📊 Dashboard', '👥 Gestor de Clientes', '🏠 Gestión de Habitaciones', '📅 Gestor de Reservas', '🧹 Logística',  '🍽️Cotización de Buffet', '🏨 Front Desk']
 
 #letras
 FUENTE = 'Arial'
