@@ -1568,6 +1568,46 @@ def buscar_articulo(texto):
         finally:
             conn.close()
 
+def stock_minimo(id):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT stock_minimo FROM inventario
+            WHERE id = ?;
+            """, (id,))
+            consulta = cursor.fetchone()
+            resultado = consulta[0]
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener artículo: {e}')
+        finally:
+            conn.close()
+
+def guardar_articulo(data, tipo, id = None):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            if tipo == "agregar" and id is None: #agregar 
+                cursor.execute("""
+                INSERT INTO inventario(item,stock_actual,stock_minimo,unidad,precio_unitario,notas)
+                VALUES (?,?,?,?,?,?)
+                """, (data))
+            else: #editar
+                cursor.execute("""
+                UPDATE inventario
+                SET item = ?,stock_actual = ?,stock_minimo = ?,unidad = ?,precio_unitario = ?,notas = ?
+                WHERE id = ?
+                """, (*data[:6], id))
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
+
 def insertar_cotizacion_buffet(fecha, personas, menu, precio, total, notas):
     conn = conectar_bd()
     if conn:

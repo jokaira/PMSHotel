@@ -3,13 +3,13 @@ from settings import *
 from func_clases import *
 from tkinter import messagebox
 
-class GestorLogistica(ctk.CTkFrame):
+class GestorLogistica(ctk.CTkFrame): #TODO: eliminar todo lo relacionado a mantenimiento preventivo
     def __init__(self, master):
         super().__init__(master = master, fg_color='transparent')
         self.pack(fill = 'both', expand = True)
 
         #variables
-        self.selec = None
+        self.selec = []
         self.hab_sucia = ctk.StringVar()
         self.personal_housekeeping = ctk.StringVar()
         self.busqueda_var = ctk.StringVar()
@@ -389,7 +389,8 @@ class GestorLogistica(ctk.CTkFrame):
                             color=VERDE1,
                             hover=VERDE2,
                             padx=6,
-                            fill=None
+                            fill=None,
+                            metodo= lambda: self.modal_inventario('agregar')
                             )
         
         btn_nueva_trans = Boton(master=frame_busqueda,
@@ -405,6 +406,15 @@ class GestorLogistica(ctk.CTkFrame):
 
         #inventario actual
         self.tabla_inventario([ENCABEZADOS_INVENTARIO] + [a for a in INVENTARIO()])
+
+        btn_editar = Boton(master=inventario_actual,
+                            texto='Editar artículo',
+                            padx=6,
+                            fill=None,
+                            altura=25,
+                            pady=(0,5),
+                            metodo=lambda: self.modal_inventario(tipo='editar')
+                            )
 
         #últimas transacciones
         historial_transacciones = ctk.CTkFrame(master=self.logistica, 
@@ -620,3 +630,200 @@ class GestorLogistica(ctk.CTkFrame):
     def limpiar_busqueda_art(self):
         self.busqueda_var.set('')
         self.tabla_inventario([ENCABEZADOS_INVENTARIO] + [a for a in INVENTARIO()])
+
+    def modal_inventario(self, tipo):
+            if tipo == 'editar' and len(self.selec) != 7:
+                messagebox.showwarning("Advertencia", "Por favor seleccione un artículo para editar")
+                return
+
+            titulo_ventana = ""
+            titulo_modal = ""
+            match tipo:
+                case "agregar":
+                    titulo_ventana = "Agregar Nuevo Artículo"
+                    titulo_modal = titulo_ventana
+                case 'editar':
+                    titulo_ventana = "Editar Artículo"
+                    titulo_modal = titulo_ventana
+
+            dialogo = ctk.CTkToplevel(self, fg_color=CLARO)
+            dialogo.title(titulo_ventana)
+            dialogo.geometry("720x380")
+            dialogo.resizable(False,False)
+            dialogo.transient(self)
+            dialogo.grab_set()
+            
+            #titulo
+            ctk.CTkLabel(dialogo, 
+                        text= titulo_modal, 
+                        text_color=OSCURO, 
+                        font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                        ).pack(anchor = 'w', pady = (16,0), padx = 16)
+            
+            ctk.CTkFrame(dialogo, height=2, fg_color=OSCURO).pack(fill = 'x',  padx = 15, pady =10)
+
+            match tipo:
+                case "agregar":
+                    self.formulario_articulo(master = dialogo, tipo='agregar')
+                case "editar":
+                    self.formulario_articulo(master=dialogo, tipo='editar')
+    
+    def formulario_articulo(self, master, tipo):
+        frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
+        frame_formulario.pack(fill = 'both', expand = True, padx = 15)
+
+        frame_formulario.columnconfigure(index=(0,1,2,3), weight = 1, uniform='x')
+
+        descripcion = ctk.StringVar()
+        stock_actual = ctk.IntVar(value=0)
+        stock_minimo = ctk.IntVar()
+        unidad = ctk.StringVar()
+        precio_unitario = ctk.DoubleVar(value=0.00)
+        notas = ctk.StringVar()
+        id = None
+
+        if tipo == 'editar':
+            descripcion.set(self.selec[1])
+            stock_actual.set(self.selec[2])
+            stock_minimo.set(basedatos.stock_minimo(self.selec[0]))
+            unidad.set(self.selec[3])
+            precio_unitario.set(self.selec[4])
+            notas.set(self.selec[6])
+            id = self.selec[0]
+
+
+        # letrero de campos obligatorios
+        obligatorio = ctk.CTkLabel(master=frame_formulario, text="*: Campos obligatorios")
+        obligatorio.place(relx = 0.95, rely = 0.95, anchor = 'se')
+
+        #descripcion
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Descripción*',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 0, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=descripcion,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS,
+                     state='disabled' if tipo == 'editar' else 'normal'
+                     ).grid(row = 0, column = 1, sticky = 'nsew', pady = 12)
+        
+        #stock actual
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Stock Actual*',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 0, column = 2, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=stock_actual,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 0, column = 3, sticky = 'nsew', pady = 12)
+        
+        #stock minimo
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Stock Mínimo*',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 1, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=stock_minimo,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 1, column = 1, sticky = 'nsew', pady = 12)
+        
+        #unidad
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Unidad de medida*',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 1, column = 2, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=unidad,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 1, column = 3, sticky = 'nsew', pady = 12)
+        
+        #precio
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Precio Unitario*',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 2, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=precio_unitario,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 2, column = 1, sticky = 'nsew', pady = 12)
+        
+        #notas
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Notas',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 2, column = 2, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=notas,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 2, column = 3, sticky = 'nsew', pady = 12)
+        
+        def guardar():
+            datos = [
+                descripcion.get().strip(),
+                stock_actual.get(),
+                stock_minimo.get(),
+                unidad.get().strip(),
+                precio_unitario.get(),
+                notas.get().strip(),
+            ]
+
+            if not datos[0] or not datos[1] or not datos[2] or not datos[3] or not datos[4]:
+                messagebox.showerror("Error", "Por favor complete todos los campos obligatorios")
+                return
+            
+            fue_exitoso, mensaje = basedatos.guardar_articulo(data=datos, tipo=tipo, id = id)
+
+            if not fue_exitoso:
+                messagebox.showerror("Error", mensaje)
+                return
+            
+            messagebox.showinfo("Éxito", mensaje)
+            master.destroy()
+            self.tabla_inventario([ENCABEZADOS_INVENTARIO] + [a for a in INVENTARIO()])
+
+        #boton cancelar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Cancelar',
+                      fg_color=PRIMARIO,
+                      hover_color=ROJO,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=master.destroy,
+                        ).grid(row = 6, column = 1, pady = 12)
+        
+        #boton guardar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Guardar',
+                      fg_color=VERDE1,
+                      hover_color=VERDE2,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=guardar,
+                        ).grid(row = 6, column = 2, pady = 12)
+

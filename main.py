@@ -41,7 +41,7 @@ class App(ctk.CTk):
         self.logistica = None
         self.buffet = None
         self.front = None
-        self.front_desk = None
+        # self.front_desk = None
 
         #menu lateral con botones
         self.sidebar = SideBar(self)
