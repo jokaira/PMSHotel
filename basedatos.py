@@ -172,25 +172,6 @@ def crear_tablas():
             conn.commit()
             print('6. Tabla "turnos" creada exitosamente')
 
-            #7. mantenimiento preventivo
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS mantenimiento_preventivo (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                habitacion TEXT NOT NULL,
-                tipo_mantenimiento TEXT NOT NULL,
-                fecha_programada DATE NOT NULL,
-                fecha_ejecucion DATE,
-                descripcion TEXT NOT NULL,
-                tecnico_asignado TEXT NOT NULL,
-                completado BOOLEAN DEFAULT 0,
-                fecha_creacion DATETIME DEFAULT (datetime('now')),
-                notas TEXT,
-                FOREIGN KEY (habitacion) REFERENCES habitaciones(numero)
-            );
-            """)
-            conn.commit()
-            print('7. Tabla "mantenimiento_preventivo" creada exitosamente')
-
             #8. tickets de mantenimiento
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS tickets_mantenimiento (
@@ -210,9 +191,9 @@ def crear_tablas():
             conn.commit()
             print('8. Tabla "tickets_mantenimiento" creada exitosamente')
 
-            #9. mantenimiento correctivo
+            #9. mantenimiento
             cursor.execute("""
-            CREATE TABLE IF NOT EXISTS mantenimiento_correctivo (
+            CREATE TABLE IF NOT EXISTS mantenimiento(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 id_ticket INTEGER NOT NULL,
                 tipo_problema TEXT NOT NULL,
@@ -474,15 +455,6 @@ def insertar_datos_muestra():
             (2, date('now', '+2 days'), '09:00', '17:00', 'Mantenimiento', 'individual');
             """)
 
-            # Insertar Mantenimiento Preventivo
-            cursor.execute("""
-            INSERT INTO mantenimiento_preventivo (habitacion, tipo_mantenimiento, fecha_programada, descripcion, tecnico_asignado) VALUES
-            ('101', 'Limpieza profunda', date('now', '+7 days'), 'Limpieza profunda y mantenimiento de equipos', 'Carlos Méndez'),
-            ('201', 'Revisión HVAC', date('now', '+14 days'), 'Revisión y mantenimiento del sistema de aire acondicionado', 'Roberto Silva'),
-            ('301', 'Limpieza profunda', date('now', '+21 days'), 'Limpieza profunda y cambio de filtros', 'Carlos Méndez'),
-            ('401', 'Revisión eléctrica', date('now', '+30 days'), 'Revisión completa del sistema eléctrico', 'Roberto Silva');
-            """)
-
             # Insertar Tickets de Mantenimiento
             cursor.execute("""
             INSERT INTO tickets_mantenimiento (habitacion, descripcion, estado, prioridad, tecnico_asignado) VALUES
@@ -492,9 +464,9 @@ def insertar_datos_muestra():
             ('102', 'Luz del baño no funciona', 'Completado', 'Media', 'Roberto Silva');
             """)
 
-            # Insertar Mantenimiento Correctivo
+            # Insertar Mantenimiento
             cursor.execute("""
-            INSERT INTO mantenimiento_correctivo (id_ticket, tipo_problema, fecha_reporte, fecha_inicio, descripcion_problema, descripcion_solucion, tecnico_asignado, completado) VALUES
+            INSERT INTO mantenimiento (id_ticket, tipo_problema, fecha_reporte, fecha_inicio, descripcion_problema, descripcion_solucion, tecnico_asignado, completado) VALUES
             (1, 'Falla HVAC', date('now', '-2 days'), date('now', '-1 day'), 'Aire acondicionado no enfría correctamente', 'Cambio de filtros y limpieza de conductos', 'Carlos Méndez', 0),
             (2, 'Fuga de agua', date('now', '-1 day'), date('now'), 'Fuga de agua en la ducha', 'Reparación de válvula y sellado', 'Roberto Silva', 0),
             (3, 'Falla eléctrica', date('now'), NULL, 'Cerradura eléctrica no responde', NULL, 'Carlos Méndez', 0),
@@ -582,9 +554,8 @@ def limpiar_datos():
             cursor.execute("DELETE FROM buffet;")
             cursor.execute("DELETE FROM checkins_checkouts;")
             cursor.execute("DELETE FROM walk_ins;")
-            cursor.execute("DELETE FROM mantenimiento_correctivo;")
+            cursor.execute("DELETE FROM mantenimiento;")
             cursor.execute("DELETE FROM tickets_mantenimiento;")
-            cursor.execute("DELETE FROM mantenimiento_preventivo;")
             cursor.execute("DELETE FROM turnos;")
             cursor.execute("DELETE FROM housekeeping_plan;")
             cursor.execute("DELETE FROM personal;")
@@ -608,11 +579,9 @@ def limpiar_datos():
             UNION ALL
             SELECT 'walk_ins', COUNT(*) FROM walk_ins
             UNION ALL
-            SELECT 'mantenimiento_correctivo', COUNT(*) FROM mantenimiento_correctivo
+            SELECT 'mantenimiento_correctivo', COUNT(*) FROM mantenimiento
             UNION ALL
             SELECT 'tickets_mantenimiento', COUNT(*) FROM tickets_mantenimiento
-            UNION ALL
-            SELECT 'mantenimiento_preventivo', COUNT(*) FROM mantenimiento_preventivo
             UNION ALL
             SELECT 'turnos', COUNT(*) FROM turnos
             UNION ALL
@@ -631,8 +600,8 @@ def limpiar_datos():
             cursor.execute("""
             DELETE FROM sqlite_sequence WHERE name IN (
                 'clientes', 'tipos_habitacion', 'habitaciones', 'reservas', 'personal',
-                'turnos', 'mantenimiento_preventivo', 'tickets_mantenimiento', 
-                'mantenimiento_correctivo', 'walk_ins', 'checkins_checkouts',
+                'turnos', 'tickets_mantenimiento', 
+                'mantenimiento', 'walk_ins', 'checkins_checkouts',
                 'buffet', 'eventos', 'housekeeping_plan', 'inventario', 'ingresos', 'transacciones_inventario'
             );
             """)
@@ -1605,6 +1574,22 @@ def guardar_articulo(data, tipo, id = None):
             return True, "Datos insertados exitosamente"
         except sql.Error as e:
             return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
+
+def ver_transaccion(id):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT * FROM transacciones_inventario
+            WHERE id = ?;
+            """, (id,))
+            resultado = cursor.fetchone()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener información: {e}')
         finally:
             conn.close()
 

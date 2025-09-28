@@ -3,7 +3,8 @@ from settings import *
 from func_clases import *
 from tkinter import messagebox
 
-class GestorLogistica(ctk.CTkFrame): #TODO: eliminar todo lo relacionado a mantenimiento preventivo
+class GestorLogistica(ctk.CTkFrame):
+    #TODO: hacer pestaña aparte para los turnos
     def __init__(self, master):
         super().__init__(master = master, fg_color='transparent')
         self.pack(fill = 'both', expand = True)
@@ -73,6 +74,18 @@ class GestorLogistica(ctk.CTkFrame): #TODO: eliminar todo lo relacionado a mante
                           )
             self.btn_personal.pack(side ='left', padx = 5)
 
+            self.btn_turnos = ctk.CTkButton(master=master, 
+                          text= 'Turnos',
+                          fg_color=GRIS_CLARO,
+                          hover_color=GRIS,
+                          command= "",
+                          text_color=OSCURO,
+                          font = (FUENTE,TAMANO_TEXTO_DEFAULT), 
+                          height=44,
+                          corner_radius=10
+                          )
+            self.btn_turnos.pack(side ='left', padx = 5)
+
     def housekeeping(self):
         for w in self.logistica.winfo_children():
              w.destroy()
@@ -80,8 +93,9 @@ class GestorLogistica(ctk.CTkFrame): #TODO: eliminar todo lo relacionado a mante
         self.btn_mantenimiento.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_inventario.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_personal.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+        self.btn_turnos.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.logistica.configure(border_width = 0)
-
+        
         #kpi de housekeeping
         self.kpis = ctk.CTkFrame(master=self.logistica, fg_color='transparent', corner_radius=0)
         self.kpis.pack(anchor = 'n',fill = 'x')
@@ -344,6 +358,7 @@ class GestorLogistica(ctk.CTkFrame): #TODO: eliminar todo lo relacionado a mante
         self.btn_mantenimiento.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_housekeeping.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_personal.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+        self.btn_turnos.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.logistica.configure(border_width = 0)
 
         inventario_actual = ctk.CTkFrame(master=self.logistica, 
@@ -443,7 +458,8 @@ class GestorLogistica(ctk.CTkFrame): #TODO: eliminar todo lo relacionado a mante
         btn_detalle = Boton (master=frame_btn,
                            texto = 'Ver detalle', 
                            fill=None, 
-                           padx=(12,6)
+                           padx=(12,6),
+                           metodo= lambda: self.modal_inventario(tipo='detalle_trans')
                            )
         btn_detalle.pack_configure(side = 'right')
 
@@ -635,6 +651,10 @@ class GestorLogistica(ctk.CTkFrame): #TODO: eliminar todo lo relacionado a mante
             if tipo == 'editar' and len(self.selec) != 7:
                 messagebox.showwarning("Advertencia", "Por favor seleccione un artículo para editar")
                 return
+            
+            if tipo == 'detalle_trans' and len(self.selec) != 6:
+                messagebox.showerror("Error", "Debe seleccionar una transacción")
+                return
 
             titulo_ventana = ""
             titulo_modal = ""
@@ -645,6 +665,9 @@ class GestorLogistica(ctk.CTkFrame): #TODO: eliminar todo lo relacionado a mante
                 case 'editar':
                     titulo_ventana = "Editar Artículo"
                     titulo_modal = titulo_ventana
+                case 'detalle_trans':
+                    titulo_ventana = "Ver detalles de Transacción"
+                    titulo_modal = "Detalles de la transacción"
 
             dialogo = ctk.CTkToplevel(self, fg_color=CLARO)
             dialogo.title(titulo_ventana)
@@ -667,6 +690,8 @@ class GestorLogistica(ctk.CTkFrame): #TODO: eliminar todo lo relacionado a mante
                     self.formulario_articulo(master = dialogo, tipo='agregar')
                 case "editar":
                     self.formulario_articulo(master=dialogo, tipo='editar')
+                case 'detalle_trans':
+                    self.ver_detalle_transaccion(master = dialogo)
     
     def formulario_articulo(self, master, tipo):
         frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
@@ -827,3 +852,33 @@ class GestorLogistica(ctk.CTkFrame): #TODO: eliminar todo lo relacionado a mante
                       command=guardar,
                         ).grid(row = 6, column = 2, pady = 12)
 
+    def ver_detalle_transaccion(self, master):
+
+        transaccion = list(basedatos.ver_transaccion(self.selec[0]))
+        transaccion[1] = self.selec[1]
+        transaccion.insert(4, self.selec[4]) 
+        #fecha vendria siendo 5, area 6, y motivo 7
+
+        descripcion = ['ID de Transacción', 'Descripción del Artículo', 'Tipo de Transacción', 'Cantidad', 'Unidad de Medida', 'Fecha y Hora', 'Área', 'Motivo']
+
+        contenedor = ctk.CTkFrame(master=master, fg_color=GRIS_CLARO4)
+        contenedor.pack(fill = 'both', expand = True, padx = 16, pady = (0,10))
+        
+        contenedor.columnconfigure(index=(0,1,2,3), weight = 1, uniform= 'k')
+
+        for i, (desc, valor) in enumerate(zip(descripcion, transaccion)):
+            if i == len(descripcion) - 1:
+                fila = (i // 2) + 1  # Nueva fila al final
+                label_desc = ctk.CTkLabel(contenedor, text=desc + ": ", text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold'))
+                label_val = ctk.CTkLabel(contenedor, text=str(valor), text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT))
+                label_desc.grid(row=fila, column=0, padx=(8,2), pady=4, sticky="e")
+                label_val.grid(row=fila, column=1, columnspan=3, padx=(2,8), pady=4, sticky="w")
+            else:
+                fila = i // 2
+                columna = (i % 2) * 2  # Multiplica por 2 porque cada valor ocupa dos columnas (label y valor)
+                label_desc = ctk.CTkLabel(contenedor, text=desc + ": ", text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold'))
+                label_val = ctk.CTkLabel(contenedor, text=str(valor), text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT))
+                label_desc.grid(row=fila, column=columna, padx=(8,2), pady=4, sticky="e")
+                label_val.grid(row=fila, column=columna+1, padx=(2,8), pady=4, sticky="w")
+
+        
