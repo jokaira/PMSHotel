@@ -4,7 +4,6 @@ from func_clases import *
 from tkinter import messagebox
 
 class GestorLogistica(ctk.CTkFrame):
-    #TODO: hacer pestaña aparte para los turnos
     def __init__(self, master):
         super().__init__(master = master, fg_color='transparent')
         self.pack(fill = 'both', expand = True)
@@ -413,7 +412,8 @@ class GestorLogistica(ctk.CTkFrame):
                             color=MAMEY,
                             hover=MAMEY2,
                             padx=6,
-                            fill=None
+                            fill=None,
+                            metodo= lambda: self.modal_inventario('hacer_trans')
                             )
 
         self.contenedor_tabla = ctk.CTkFrame(inventario_actual, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
@@ -652,6 +652,10 @@ class GestorLogistica(ctk.CTkFrame):
                 messagebox.showwarning("Advertencia", "Por favor seleccione un artículo para editar")
                 return
             
+            if tipo == 'hacer_trans' and len(self.selec) != 7:
+                messagebox.showwarning("Advertencia", "Por favor seleccione un artículo para realizar la transacción")
+                return
+
             if tipo == 'detalle_trans' and len(self.selec) != 6:
                 messagebox.showerror("Error", "Debe seleccionar una transacción")
                 return
@@ -668,6 +672,9 @@ class GestorLogistica(ctk.CTkFrame):
                 case 'detalle_trans':
                     titulo_ventana = "Ver detalles de Transacción"
                     titulo_modal = "Detalles de la transacción"
+                case 'hacer_trans':
+                    titulo_ventana = "Hacer Transacción"
+                    titulo_modal = "Realizar Transacción de Inventario"
 
             dialogo = ctk.CTkToplevel(self, fg_color=CLARO)
             dialogo.title(titulo_ventana)
@@ -692,6 +699,8 @@ class GestorLogistica(ctk.CTkFrame):
                     self.formulario_articulo(master=dialogo, tipo='editar')
                 case 'detalle_trans':
                     self.ver_detalle_transaccion(master = dialogo)
+                case 'hacer_trans':
+                    self.realizar_transaccion(master=dialogo)
     
     def formulario_articulo(self, master, tipo):
         frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
@@ -729,7 +738,7 @@ class GestorLogistica(ctk.CTkFrame):
                      ).grid(row = 0, column = 0, sticky = 'w', pady = 12)
         ctk.CTkEntry(master=frame_formulario,
                      textvariable=descripcion,
-                     text_color=OSCURO,
+                     text_color=MUTE if tipo == 'editar' else OSCURO,
                      font= (FUENTE, TAMANO_TEXTO_DEFAULT),
                      border_width=1,
                      border_color=GRIS,
@@ -744,10 +753,11 @@ class GestorLogistica(ctk.CTkFrame):
                      ).grid(row = 0, column = 2, sticky = 'w', pady = 12)
         ctk.CTkEntry(master=frame_formulario,
                      textvariable=stock_actual,
-                     text_color=OSCURO,
+                     text_color=MUTE if tipo == 'editar' else OSCURO,
                      font= (FUENTE, TAMANO_TEXTO_DEFAULT),
                      border_width=1,
-                     border_color=GRIS
+                     border_color=GRIS,
+                     state='disabled' if tipo == 'editar' else 'normal'
                      ).grid(row = 0, column = 3, sticky = 'nsew', pady = 12)
         
         #stock minimo
@@ -858,6 +868,7 @@ class GestorLogistica(ctk.CTkFrame):
         transaccion[1] = self.selec[1]
         transaccion.insert(4, self.selec[4]) 
         #fecha vendria siendo 5, area 6, y motivo 7
+        transaccion[6] = basedatos.ver_area(transaccion[6])
 
         descripcion = ['ID de Transacción', 'Descripción del Artículo', 'Tipo de Transacción', 'Cantidad', 'Unidad de Medida', 'Fecha y Hora', 'Área', 'Motivo']
 
@@ -881,4 +892,162 @@ class GestorLogistica(ctk.CTkFrame):
                 label_desc.grid(row=fila, column=columna, padx=(8,2), pady=4, sticky="e")
                 label_val.grid(row=fila, column=columna+1, padx=(2,8), pady=4, sticky="w")
 
+    def realizar_transaccion(self, master): 
+        frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
+        frame_formulario.pack(fill = 'both', expand = True, padx = 15)
+
+        frame_formulario.columnconfigure(index=(0,1,2,3), weight = 1, uniform='x')
+
+        id_articulo = self.selec[0]
+        nombre_articulo = self.selec[1]
+        tipo_trans = ctk.StringVar(value='Entrada')
+        cantidad = ctk.IntVar()
+        area = ctk.StringVar()
+        motivo = ctk.StringVar()
+
+        # letrero de campos obligatorios
+        obligatorio = ctk.CTkLabel(master=frame_formulario, text="*: Campos obligatorios")
+        obligatorio.place(relx = 0.95, rely = 0.95, anchor = 'se')
+
+        #detalles del artículo
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Descripción de artículo',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 0, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkLabel(master=frame_formulario,
+                     text=nombre_articulo,
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 0, column = 1, sticky = 'w', pady = 12)
         
+        #tipo de transaccion
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Tipo de Transacción*',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 0, column = 2, sticky = 'w', pady = 12)
+        ctk.CTkComboBox(master=frame_formulario,
+                        variable=tipo_trans,
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        button_color=GRIS_CLARO,
+                        button_hover_color=GRIS,
+                        dropdown_fg_color=CLARO,
+                        dropdown_hover_color=GRIS_CLARO,
+                        dropdown_text_color=OSCURO,
+                        dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        border_color=GRIS,
+                        border_width=1,
+                        values=['Entrada', 'Salida']
+                        ).grid(row=0, column=3, sticky = 'nsew', pady= (0,12))
+        
+        #cantidad
+        ctk.CTkLabel(master=frame_formulario,
+                     text=f'Cantidad {self.selec[3]}*',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 1, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=cantidad,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 1, column = 1, sticky = 'nsew', pady = 12)
+        
+        #area
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Área*',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 1, column = 2, sticky = 'w', pady = 12)
+        ctk.CTkComboBox(master=frame_formulario,
+                        variable=area,
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        button_color=GRIS_CLARO,
+                        button_hover_color=GRIS,
+                        dropdown_fg_color=CLARO,
+                        dropdown_hover_color=GRIS_CLARO,
+                        dropdown_text_color=OSCURO,
+                        dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        border_color=GRIS,
+                        border_width=1,
+                        values=basedatos.obtener_areas()
+                        ).grid(row = 1, column = 3, sticky = 'nsew', pady = 12)
+        
+        #motivo
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Motivo*',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 2, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=motivo,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 2, column = 1, sticky = 'nsew', pady = 12)
+
+        def guardar():
+            if cantidad.get() <= 0:
+                messagebox.showerror("Error", "La cantidad debe ser mayor a 0")
+                return
+
+            if area.get().strip() is None:
+                messagebox.showerror("Error", "Por favor complete todos los campos obligatorios")
+                return
+
+            datos = [
+                id_articulo,
+                tipo_trans.get().strip(),
+                cantidad.get(),
+                basedatos.ver_id_area(area.get().strip()),
+                motivo.get().strip()
+            ]
+
+            if not datos[0] or not datos[1] or not datos[2] or not datos[3] or not datos[4]:
+                messagebox.showerror("Error", "Por favor complete todos los campos obligatorios")
+                return
+            
+            #ajustar inventario de acuerdo con la transaccion
+            fue_exitoso, mensaje = basedatos.ajustar_inventario(cantidad=datos[2], id=datos[0], tipo=datos[1])
+            if not fue_exitoso:
+                messagebox.showerror("Error", mensaje)
+                return
+
+            #guardar la transacción            
+            fue_exitoso1, mensaje1 = basedatos.guardar_transaccion(data=datos)
+
+            if not fue_exitoso1:
+                messagebox.showerror("Error", mensaje1)
+                return
+
+            messagebox.showinfo("Éxito", mensaje1)
+            master.destroy()
+            self.tabla_inventario([ENCABEZADOS_INVENTARIO] + [a for a in INVENTARIO()])
+            self.tabla_trans([ENCABEZADO_TRANS_INVENT] + [t for t in TRANS_INVENTARIO()])
+        
+        #boton cancelar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Cancelar',
+                      fg_color=PRIMARIO,
+                      hover_color=ROJO,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=master.destroy,
+                        ).grid(row = 6, column = 1, pady = 12)
+        
+        #boton guardar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Guardar',
+                      fg_color=VERDE1,
+                      hover_color=VERDE2,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=guardar,
+                        ).grid(row = 6, column = 2, pady = 12)

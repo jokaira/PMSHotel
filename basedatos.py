@@ -134,6 +134,16 @@ def crear_tablas():
             conn.commit()
             print('4. Tabla "reservas" creada exitosamente')
 
+            #4.5. areas
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS areas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT UNIQUE NOT NULL
+            );
+            """)
+            conn.commit()
+            print('4.5. Tabla "areas" creada exitosamente')
+
             #5. personal
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS personal (
@@ -142,12 +152,13 @@ def crear_tablas():
                 nombre TEXT NOT NULL,
                 apellido TEXT NOT NULL,
                 puesto TEXT NOT NULL,
-                area TEXT NOT NULL,
+                area_id INTEGER NOT NULL,
                 salario_hora REAL NOT NULL,
                 estado TEXT NOT NULL DEFAULT 'Activo',
                 fecha_contratacion DATE NOT NULL,
                 telefono TEXT,
-                email TEXT
+                email TEXT,
+                FOREIGN KEY (area_id) REFERENCES areas(id)
             );
             """)
             conn.commit()
@@ -161,12 +172,13 @@ def crear_tablas():
                 fecha_especifica DATE NOT NULL,
                 hora_inicio TEXT NOT NULL,
                 hora_fin TEXT NOT NULL,
-                area TEXT NOT NULL,
+                area_id INTEGER NOT NULL,
                 activo BOOLEAN DEFAULT 1,
                 fecha_creacion DATETIME DEFAULT (datetime('now')),
                 tipo_asignacion TEXT DEFAULT 'individual',
                 informacion_adicional TEXT,
-                FOREIGN KEY (id_personal) REFERENCES personal(id)
+                FOREIGN KEY (id_personal) REFERENCES personal(id),
+                FOREIGN KEY (area_id) REFERENCES areas(id)
             );
             """)
             conn.commit()
@@ -328,9 +340,10 @@ def crear_tablas():
                 tipo TEXT NOT NULL, -- 'entrada' o 'salida'
                 cantidad INTEGER NOT NULL,
                 fecha DATETIME DEFAULT (datetime('now')),
-                area TEXT NOT NULL,
+                area_id INTEGER NOT NULL,
                 motivo TEXT,
-                FOREIGN KEY (id_inventario) REFERENCES inventario(id)
+                FOREIGN KEY (id_inventario) REFERENCES inventario(id),
+                FOREIGN KEY (area_id) REFERENCES areas(id)
             );
             """)
             conn.commit()
@@ -384,14 +397,24 @@ def insertar_datos_muestra():
             ('402', 3, 'Limpiando', '4to Piso', 4);
             """)
 
+            # Insertar Áreas
+            cursor.execute("""
+            INSERT OR IGNORE INTO areas (nombre) VALUES
+            ('Housekeeping'),
+            ('Mantenimiento'),
+            ('Front Desk'),
+            ('Cocina'),
+            ('Admin');
+            """)
+
             # Insertar Personal
             cursor.execute("""
-            INSERT INTO personal (codigo, nombre, apellido, puesto, area, salario_hora, fecha_contratacion, telefono, email) VALUES
-            ('EMP001', 'María', 'López', 'Supervisora', 'Housekeeping', 15.00, '2023-01-15', '809-111-1111', 'maria.lopez@hotel.com'),
-            ('EMP002', 'Carlos', 'Méndez', 'Técnico', 'Mantenimiento', 18.00, '2023-02-20', '809-222-2222', 'carlos.mendez@hotel.com'),
-            ('EMP003', 'Ana', 'García', 'Recepcionista', 'Front Desk', 12.00, '2023-03-10', '809-333-3333', 'ana.garcia@hotel.com'),
-            ('EMP004', 'Roberto', 'Silva', 'Técnico', 'Mantenimiento', 18.00, '2023-04-05', '809-444-4444', 'roberto.silva@hotel.com'),
-            ('EMP005', 'Carmen', 'Vega', 'Conserje', 'Housekeeping', 10.00, '2023-05-12', '809-555-5555', 'carmen.vega@hotel.com');
+            INSERT INTO personal (codigo, nombre, apellido, puesto, area_id, salario_hora, fecha_contratacion, telefono, email) VALUES
+            ('EMP001', 'María', 'López', 'Supervisora', (SELECT id FROM areas WHERE nombre='Housekeeping'), 15.00, '2023-01-15', '809-111-1111', 'maria.lopez@hotel.com'),
+            ('EMP002', 'Carlos', 'Méndez', 'Técnico', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 18.00, '2023-02-20', '809-222-2222', 'carlos.mendez@hotel.com'),
+            ('EMP003', 'Ana', 'García', 'Recepcionista', (SELECT id FROM areas WHERE nombre='Front Desk'), 12.00, '2023-03-10', '809-333-3333', 'ana.garcia@hotel.com'),
+            ('EMP004', 'Roberto', 'Silva', 'Técnico', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 18.00, '2023-04-05', '809-444-4444', 'roberto.silva@hotel.com'),
+            ('EMP005', 'Carmen', 'Vega', 'Conserje', (SELECT id FROM areas WHERE nombre='Housekeeping'), 10.00, '2023-05-12', '809-555-5555', 'carmen.vega@hotel.com');
             """)
 
             # Insertar Ingresos
@@ -445,14 +468,14 @@ def insertar_datos_muestra():
 
             # Insertar Turnos
             cursor.execute("""
-            INSERT INTO turnos (id_personal, fecha_especifica, hora_inicio, hora_fin, area, tipo_asignacion) VALUES
-            (1, date('now'), '08:00', '16:00', 'Housekeeping', 'individual'),
-            (2, date('now'), '09:00', '17:00', 'Mantenimiento', 'individual'),
-            (3, date('now'), '07:00', '15:00', 'Front Desk', 'individual'),
-            (4, date('now', '+1 day'), '09:00', '17:00', 'Mantenimiento', 'individual'),
-            (5, date('now', '+1 day'), '08:00', '16:00', 'Housekeeping', 'individual'),
-            (1, date('now', '+2 days'), '08:00', '16:00', 'Housekeeping', 'individual'),
-            (2, date('now', '+2 days'), '09:00', '17:00', 'Mantenimiento', 'individual');
+            INSERT INTO turnos (id_personal, fecha_especifica, hora_inicio, hora_fin, area_id, tipo_asignacion) VALUES
+            (1, date('now'), '08:00', '16:00', (SELECT id FROM areas WHERE nombre='Housekeeping'), 'individual'),
+            (2, date('now'), '09:00', '17:00', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 'individual'),
+            (3, date('now'), '07:00', '15:00', (SELECT id FROM areas WHERE nombre='Front Desk'), 'individual'),
+            (4, date('now', '+1 day'), '09:00', '17:00', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 'individual'),
+            (5, date('now', '+1 day'), '08:00', '16:00', (SELECT id FROM areas WHERE nombre='Housekeeping'), 'individual'),
+            (1, date('now', '+2 days'), '08:00', '16:00', (SELECT id FROM areas WHERE nombre='Housekeeping'), 'individual'),
+            (2, date('now', '+2 days'), '09:00', '17:00', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 'individual');
             """)
 
             # Insertar Tickets de Mantenimiento
@@ -524,15 +547,15 @@ def insertar_datos_muestra():
             
             # Insertar datos de muestra en transacciones de inventario
             cursor.execute("""
-            INSERT INTO transacciones_inventario (id_inventario, tipo, cantidad, area, motivo) VALUES
-            (1, 'Entrada', 50, 'Admin', 'Compra de sábanas'),
-            (2, 'Salida', 20, 'Housekeeping', 'Entrega de toallas a habitaciones'),
-            (3, 'Entrada', 100, 'Admin', 'Compra de jabón'),
-            (4, 'Salida', 10, 'Housekeeping', 'Reposición de shampoo en habitaciones'),
-            (5, 'Entrada', 200, 'Admin', 'Compra de papel higiénico'),
-            (6, 'Salida', 5, 'Cocina', 'Consumo de café en desayuno'),
-            (7, 'Entrada', 10, 'Admin', 'Compra de azúcar'),
-            (8, 'Salida', 8, 'Cocina', 'Consumo de leche en cocina');
+            INSERT INTO transacciones_inventario (id_inventario, tipo, cantidad, area_id, motivo) VALUES
+            (1, 'Entrada', 50, (SELECT id FROM areas WHERE nombre='Admin'), 'Compra de sábanas'),
+            (2, 'Salida', 20, (SELECT id FROM areas WHERE nombre='Housekeeping'), 'Entrega de toallas a habitaciones'),
+            (3, 'Entrada', 100, (SELECT id FROM areas WHERE nombre='Admin'), 'Compra de jabón'),
+            (4, 'Salida', 10, (SELECT id FROM areas WHERE nombre='Housekeeping'), 'Reposición de shampoo en habitaciones'),
+            (5, 'Entrada', 200, (SELECT id FROM areas WHERE nombre='Admin'), 'Compra de papel higiénico'),
+            (6, 'Salida', 5, (SELECT id FROM areas WHERE nombre='Cocina'), 'Consumo de café en desayuno'),
+            (7, 'Entrada', 10, (SELECT id FROM areas WHERE nombre='Admin'), 'Compra de azúcar'),
+            (8, 'Salida', 8, (SELECT id FROM areas WHERE nombre='Cocina'), 'Consumo de leche en cocina');
             """)
 
             conn.commit()
@@ -1336,7 +1359,7 @@ def obtener_personal_housekeeping():
         try:
             cursor.execute("""
             SELECT * FROM personal
-            WHERE area = 'Housekeeping' AND estado = 'Activo'
+            WHERE area_id = 1 AND estado = 'Activo'
             ORDER BY codigo;
             """)
             consulta = cursor.fetchall()
@@ -1577,6 +1600,58 @@ def guardar_articulo(data, tipo, id = None):
         finally:
             conn.close()
 
+def obtener_areas():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT nombre FROM areas;
+            """)
+            consulta = cursor.fetchall()
+            resultado = []
+            for area in consulta:
+                resultado.append(area[0])
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener areas: {e}')
+        finally:
+            conn.close()
+
+def ver_area(id):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT nombre FROM areas
+            WHERE id = ?;
+            """, (id,))
+            consulta = cursor.fetchone()
+            resultado = consulta[0]
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener dato: {e}')
+        finally:
+            conn.close()
+
+def ver_id_area(area):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT id FROM areas
+            WHERE nombre = ?;
+            """, (area,))
+            consulta = cursor.fetchone()
+            resultado = consulta[0]
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener dato: {e}')
+        finally:
+            conn.close()
+
 def ver_transaccion(id):
     conn = conectar_bd()
     if conn:
@@ -1590,6 +1665,52 @@ def ver_transaccion(id):
             return resultado
         except sql.Error as e:
             print(f'Error al obtener información: {e}')
+        finally:
+            conn.close()
+
+def ajustar_inventario(cantidad, id, tipo):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT stock_actual FROM inventario WHERE id = ?", (id,))
+            consulta = cursor.fetchone()
+            stock_actual = consulta[0]
+
+            if tipo == 'Entrada':
+                cursor.execute("""
+                UPDATE inventario
+                SET stock_actual = stock_actual + ?
+                WHERE id = ?;
+                """, (cantidad,id))
+            elif tipo == 'Salida':
+                if cantidad > stock_actual:
+                    return False, f"La cantidad de salida es mayor al stock actual: {stock_actual}"
+                cursor.execute("""
+                UPDATE inventario
+                SET stock_actual = stock_actual - ?
+                WHERE id = ?;
+                """, (cantidad,id))
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
+
+def guardar_transaccion(data):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO transacciones_inventario(id_inventario,tipo,cantidad,area_id,motivo)
+                VALUES (?,?,?,?,?)
+                """, (data))
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
         finally:
             conn.close()
 
