@@ -1062,11 +1062,7 @@ class GestorLogistica(ctk.CTkFrame):
         self.btn_turnos.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.logistica.configure(border_width = 0)
 
-        gestion_tickets = ctk.CTkFrame(master=self.logistica, 
-                                              fg_color='transparent',
-                                              border_color=GRIS_CLARO3,
-                                              border_width=1,
-                                              corner_radius=10)
+        gestion_tickets = ctk.CTkFrame(master=self.logistica,fg_color='transparent')
         gestion_tickets.pack(fill = 'x', anchor = 'n', pady = 8)
 
         ctk.CTkLabel(master=gestion_tickets, text='Tickets de mantenimiento', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).pack(anchor = 'w', padx = 15, pady = (12,8))
@@ -1076,6 +1072,48 @@ class GestorLogistica(ctk.CTkFrame):
 
         #tickets activos
         self.tabla_tickets([ENCABEZADO_TICKETS_MANT] + [t for t in TICKETS_MANTENIMIENTO()])
+
+        btn_nuevo = Boton(
+            master=gestion_tickets,
+            texto="Crear nuevo ticket",
+            color=VERDE1,
+            hover=VERDE2,
+            metodo= lambda: self.modal_mantenimiento("nuevo")
+        )
+
+    def selec_ticket(self, fila):
+        if fila == 0:
+            return
+        valores = [w.cget('text') for w, _ in self.celdas_inv[fila]]
+        self.selec = valores
+        print(self.selec)
+
+        if hasattr(self, "celdas_trans"):
+          for f, fila_widgets in enumerate(self.celdas_trans):
+              for w, es_badge in fila_widgets:
+                  default_bg = 'transparent' if f % 2 == 0 else GRIS_CLARO4
+                  w.configure(fg_color=default_bg, text_color=OSCURO)
+
+        #resaltado
+        for f, fila_widgets in enumerate(self.celdas_inv):
+            for w, es_badge in fila_widgets:
+                if es_badge:
+                    continue
+    
+                if f == fila:
+                    w.configure(fg_color = AZUL_CLARO)
+                else:
+                    if f == 0:
+                        default_bg = 'transparent'
+                        default_text = OSCURO
+                    elif f % 2 == 0:
+                        default_bg = 'transparent'
+                        default_text = OSCURO
+                    else:
+                        default_bg = GRIS_CLARO4
+                        default_text = OSCURO
+
+                    w.configure(fg_color=default_bg, text_color=default_text)
 
     def tabla_tickets(self, data):
         for w in self.contenedor_tabla.winfo_children():
@@ -1123,17 +1161,17 @@ class GestorLogistica(ctk.CTkFrame):
 
                       lbl = ctk.CTkLabel(master=pila, text=texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
                       lbl.pack(expand = True, padx = 8, pady = 2)
-                    #TODO: agregar binding
-                    #   if f > 0:
-                    #     lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion_inv(fila))
+                    
+                      if f > 0:
+                        lbl.bind("<Button-1>", lambda e, fila=f: self.selec_ticket(fila))
 
                       widget_celda = (lbl, True)
                   else:
                     lbl = ctk.CTkLabel(frame, text=texto, anchor='center', width = 140, height = 28, fg_color=bg, text_color=fg, font=font)
                     lbl.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
 
-                    # if f > 0:
-                    #   lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion_inv(fila))
+                    if f > 0:
+                      lbl.bind("<Button-1>", lambda e, fila=f: self.selec_ticket(fila))
                     widget_celda = (lbl, False)
                   
                   frame.grid_columnconfigure(c, weight=1)
@@ -1148,4 +1186,181 @@ class GestorLogistica(ctk.CTkFrame):
                   #bind capturando fila
                   fila_widgets.append(widget_celda)
             self.celdas_inv.append(fila_widgets) 
+
+    def modal_mantenimiento(self, tipo):
+            titulo_ventana = ""
+            titulo_modal = ""
+            match tipo:
+                case "nuevo":
+                    titulo_ventana = "Crear nuevo ticket"
+                    titulo_modal = titulo_ventana
+
+            dialogo = ctk.CTkToplevel(self, fg_color=CLARO)
+            dialogo.title(titulo_ventana)
+            dialogo.geometry("720x380")
+            dialogo.resizable(False,False)
+            dialogo.transient(self)
+            dialogo.grab_set()
+            
+            #titulo
+            ctk.CTkLabel(dialogo, 
+                        text= titulo_modal, 
+                        text_color=OSCURO, 
+                        font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                        ).pack(anchor = 'w', pady = (16,0), padx = 16)
+            
+            ctk.CTkFrame(dialogo, height=2, fg_color=OSCURO).pack(fill = 'x',  padx = 15, pady =10)
+
+            match tipo:
+                case "nuevo":
+                    self.nuevo_ticket(master = dialogo)
+    
+    def nuevo_ticket(self, master):
+        frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
+        frame_formulario.pack(fill = 'both', expand = True, padx = 15)
+
+        frame_formulario.columnconfigure(index=(0,1,2,3), weight = 1, uniform='x')
+
+        ubicacion = ctk.StringVar()
+        descripcion = ctk.StringVar()
+        prioridad = ctk.StringVar(value='Media')
+        notas = ctk.StringVar()
+
+        # letrero de campos obligatorios
+        obligatorio = ctk.CTkLabel(master=frame_formulario, text="*: Campos obligatorios")
+        obligatorio.place(relx = 0.95, rely = 0.95, anchor = 'se')
+
+        tipo_ticket = ""
+        es_habitacion = messagebox.askyesno("Tipo de ubicación","¿El problema está en una habitación?")
+
+        if es_habitacion:
+            tipo_ticket = 'habitacion'
+            habitacion = basedatos.lista_habitaciones()
+            ubicacion.set(habitacion[0])
+            ctk.CTkLabel(master=frame_formulario,
+                        text='Habitación*',
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                        ).grid(row = 0, column = 0, sticky = 'w', pady = 12)
+            ctk.CTkComboBox(master=frame_formulario,
+                        variable=ubicacion,
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        button_color=GRIS_CLARO,
+                        button_hover_color=GRIS,
+                        dropdown_fg_color=CLARO,
+                        dropdown_hover_color=GRIS_CLARO,
+                        dropdown_text_color=OSCURO,
+                        dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        border_color=GRIS,
+                        border_width=1,
+                        values=habitacion
+                        ).grid(row=0, column=1, sticky = 'nsew', pady= (0,12))
+        else:
+            tipo_ticket = 'area_hotel'
+            #ubicacion
+            ctk.CTkLabel(master=frame_formulario,
+                        text='Ubicación*',
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                        ).grid(row = 0, column = 0, sticky = 'w', pady = 12)
+            ctk.CTkEntry(master=frame_formulario,
+                     textvariable=ubicacion,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 0, column = 1, sticky = 'nsew', pady = 12)
         
+        #descripcion
+        ctk.CTkLabel(master=frame_formulario,
+                        text='Descripción del ticket*',
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                        ).grid(row = 0, column = 2, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=descripcion,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 0, column = 3, sticky = 'nsew', pady = 12)
+
+        # prioridad
+        ctk.CTkLabel(master=frame_formulario,
+                        text='Descripción del ticket*',
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                        ).grid(row = 1, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkComboBox(master=frame_formulario,
+                        variable=prioridad,
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        button_color=GRIS_CLARO,
+                        button_hover_color=GRIS,
+                        dropdown_fg_color=CLARO,
+                        dropdown_hover_color=GRIS_CLARO,
+                        dropdown_text_color=OSCURO,
+                        dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        border_color=GRIS,
+                        border_width=1,
+                        values=['Baja', 'Media', 'Alta']
+                        ).grid(row = 1, column = 1, sticky = 'nsew', pady = 12)
+        
+        #notas
+        ctk.CTkLabel(master=frame_formulario,
+                        text='Notas',
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                        ).grid(row = 1, column = 2, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=notas,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 1, column = 3, sticky = 'nsew', pady = 12)
+
+        def guardar():
+            datos = [
+                ubicacion.get().strip(),
+                descripcion.get().strip(),
+                prioridad.get().strip(),
+                notas.get().strip()
+            ]
+
+            if not datos[0] or not datos[1] or not datos[2]:
+                messagebox.showerror("Error", "Por favor complete todos los campos obligatorios")
+                return
+            
+            fue_exitoso, mensaje = basedatos.guardar_ticket(data=datos, tipo=tipo_ticket)
+
+            if not fue_exitoso:
+                messagebox.showerror("Error", mensaje)
+                return
+            
+            messagebox.showinfo("Éxito", mensaje)
+            master.destroy()
+            self.tabla_tickets([ENCABEZADO_TICKETS_MANT] + [t for t in TICKETS_MANTENIMIENTO()])
+        
+        #cancelar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Cancelar',
+                      fg_color=PRIMARIO,
+                      hover_color=ROJO,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=master.destroy,
+                        ).grid(row = 6, column = 1, pady = 12)
+        
+        #boton guardar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Guardar',
+                      fg_color=VERDE1,
+                      hover_color=VERDE2,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=guardar,
+                        ).grid(row = 6, column = 2, pady = 12)

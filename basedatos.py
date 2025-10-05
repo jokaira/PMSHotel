@@ -1743,8 +1743,8 @@ def obtener_tickets():
                 CASE t.estado
                     WHEN 'Sin asignar' THEN 1
                     WHEN 'Asignado' THEN 2
-                    WHEN 'En progreso' THEN 3
-                    WHEN 'Finalizado' THEN 4
+                    WHEN 'En Progreso' THEN 3
+                    WHEN 'Completado' THEN 4
                     ELSE 5
                 END,
                 t.fecha_creacion ASC;
@@ -1753,5 +1753,46 @@ def obtener_tickets():
             return resultado
         except sql.Error as e:
             print(f'Error al obtener tickets: {e}')
+        finally:
+            conn.close()
+
+def lista_habitaciones():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT numero FROM habitaciones
+            ORDER BY numero;
+            """)
+            consulta = cursor.fetchall()
+            resultado = []
+            for numero in consulta:
+                resultado.append(numero[0])
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener habitaciones: {e}')
+        finally:
+            conn.close()
+
+def guardar_ticket(data, tipo):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            if tipo == 'habitacion':
+                cursor.execute("""
+                    INSERT INTO tickets_mantenimiento(habitacion, descripcion, prioridad, notas)
+                    VALUES (?, ?, ?, ?)
+                    """, (data))
+            else:
+                cursor.execute("""
+                    INSERT INTO tickets_mantenimiento(area_hotel, descripcion, prioridad, notas)
+                    VALUES (?, ?, ?, ?)
+                    """, (data))
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
         finally:
             conn.close()
