@@ -41,7 +41,7 @@ class GestorLogistica(ctk.CTkFrame):
                           text= 'Mantenimiento',
                           fg_color=GRIS_CLARO,
                           hover_color=GRIS,
-                          command= "",
+                          command= self.mantenimiento,
                           text_color=OSCURO,
                           font = (FUENTE,TAMANO_TEXTO_DEFAULT), 
                           height=44,
@@ -350,7 +350,7 @@ class GestorLogistica(ctk.CTkFrame):
         crear_tarjetas_kpi(master=self.kpis, dict=KPI_HOUSEKEEPING())
         self.crear_tabla(data=[ENCABEZADOS_HOUSEKEEPING] + [p for p in PLAN_HOUSEKEEPING()])
 
-    def inventario(self): #TODO: crear modales de agregar item y hacer transacción
+    def inventario(self): 
         for w in self.logistica.winfo_children():
              w.destroy()
         self.btn_inventario.configure(fg_color = AZUL, hover_color = AZUL,text_color = BLANCO) 
@@ -441,7 +441,7 @@ class GestorLogistica(ctk.CTkFrame):
 
         historial_transacciones.rowconfigure(0, weight=0)
         historial_transacciones.rowconfigure(1, weight=1)
-        historial_transacciones.rowconfigure(0, weight=0)
+        # historial_transacciones.rowconfigure(0, weight=0)
         historial_transacciones.columnconfigure(0, weight=1)
 
         ctk.CTkLabel(master=historial_transacciones, text='Últimas Transacciones', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).grid(row = 0, column = 0, sticky = 'w', padx = 15, pady = (10,8))
@@ -1051,3 +1051,101 @@ class GestorLogistica(ctk.CTkFrame):
                       corner_radius=10,
                       command=guardar,
                         ).grid(row = 6, column = 2, pady = 12)
+        
+    def mantenimiento(self):
+        for w in self.logistica.winfo_children():
+             w.destroy()
+        self.btn_mantenimiento.configure(fg_color = AZUL, hover_color = AZUL,text_color = BLANCO) 
+        self.btn_housekeeping.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+        self.btn_inventario.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+        self.btn_personal.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+        self.btn_turnos.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+        self.logistica.configure(border_width = 0)
+
+        gestion_tickets = ctk.CTkFrame(master=self.logistica, 
+                                              fg_color='transparent',
+                                              border_color=GRIS_CLARO3,
+                                              border_width=1,
+                                              corner_radius=10)
+        gestion_tickets.pack(fill = 'x', anchor = 'n', pady = 8)
+
+        ctk.CTkLabel(master=gestion_tickets, text='Tickets de mantenimiento', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).pack(anchor = 'w', padx = 15, pady = (12,8))
+        
+        self.contenedor_tabla = ctk.CTkFrame(gestion_tickets, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
+        self.contenedor_tabla.pack(fill='both', expand=True, padx = 12, pady = (0,8))
+
+        #tickets activos
+        self.tabla_tickets([ENCABEZADO_TICKETS_MANT] + [t for t in TICKETS_MANTENIMIENTO()])
+
+    def tabla_tickets(self, data):
+        for w in self.contenedor_tabla.winfo_children():
+             w.destroy()
+
+        frame = ctk.CTkScrollableFrame(master=self.contenedor_tabla, fg_color='transparent')
+        frame.pack(fill = 'both', expand = True, padx = 12, pady = 12)
+
+        #resaltado segun estado
+        colores = {
+                    'Sin asignar': MUTE, 
+                    'Asignado': MAMEY,
+                    'En Progreso': AZUL,
+                    'Completado': VERDE1,
+                    'Alta': PRIMARIO,
+                    'Media': MAMEY,
+                    'Baja': VERDE2
+                  }
+
+        self.celdas_inv = []
+        for f, fila in enumerate(data):
+            fila_widgets = []
+            for c, texto in enumerate(fila):
+                  #coloreado de las lineas
+                  if f == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                  elif f % 2 == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+                  else:
+                    bg = GRIS_CLARO4
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+
+                  #resaltado de estado con "pilas"
+                  if texto in colores:
+                      cont_pila = ctk.CTkFrame(master=frame, fg_color=bg, corner_radius=0)
+                      cont_pila.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
+
+                      pila = ctk.CTkFrame(master=cont_pila, fg_color=colores[texto], corner_radius=15, height = 28)
+                      pila.pack(fill = 'y')
+
+                      lbl = ctk.CTkLabel(master=pila, text=texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
+                      lbl.pack(expand = True, padx = 8, pady = 2)
+                    #TODO: agregar binding
+                    #   if f > 0:
+                    #     lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion_inv(fila))
+
+                      widget_celda = (lbl, True)
+                  else:
+                    lbl = ctk.CTkLabel(frame, text=texto, anchor='center', width = 140, height = 28, fg_color=bg, text_color=fg, font=font)
+                    lbl.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
+
+                    # if f > 0:
+                    #   lbl.bind("<Button-1>", lambda e, fila=f: self.seleccion_inv(fila))
+                    widget_celda = (lbl, False)
+                  
+                  frame.grid_columnconfigure(c, weight=1)
+
+                  #borde encabezado
+                  if f == 0:
+                    borde = ctk.CTkFrame(master=frame, fg_color=GRIS)
+                    borde.grid(row=f*2+1, column = c, sticky = 'ew')
+                    borde.grid_propagate(False)
+                    borde.configure(height = 2)
+
+                  #bind capturando fila
+                  fila_widgets.append(widget_celda)
+            self.celdas_inv.append(fila_widgets) 
+        

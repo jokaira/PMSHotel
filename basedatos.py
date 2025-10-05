@@ -156,6 +156,7 @@ def crear_tablas():
                 salario_hora REAL NOT NULL,
                 estado TEXT NOT NULL DEFAULT 'Activo',
                 fecha_contratacion DATE NOT NULL,
+                fecha_inactivacion DATE,
                 telefono TEXT,
                 email TEXT,
                 FOREIGN KEY (area_id) REFERENCES areas(id)
@@ -186,43 +187,27 @@ def crear_tablas():
 
             #8. tickets de mantenimiento
             cursor.execute("""
-            CREATE TABLE IF NOT EXISTS tickets_mantenimiento (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                habitacion TEXT NOT NULL,
-                descripcion TEXT NOT NULL,
-                estado TEXT NOT NULL DEFAULT 'Nuevo',
-                prioridad TEXT DEFAULT 'Media',
-                fecha_creacion DATETIME DEFAULT (datetime('now')),
-                fecha_asignacion DATETIME,
-                tecnico_asignado TEXT,
-                fecha_completado DATETIME,
-                notas TEXT,
-                FOREIGN KEY (habitacion) REFERENCES habitaciones(numero)
+            CREATE TABLE tickets_mantenimiento (
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                habitacion         TEXT,
+                area_hotel         TEXT,
+                descripcion        TEXT NOT NULL,
+                estado             TEXT NOT NULL DEFAULT 'Sin asignar',
+                prioridad          TEXT NOT NULL DEFAULT 'Media',
+                tecnico_id         INTEGER,   -- FK a personal
+                fecha_creacion     DATETIME DEFAULT (datetime('now')),
+                fecha_asignacion   DATE,
+                fecha_inicio       DATE,
+                fecha_fin          DATE,
+                descripcion_solucion TEXT,
+                notas              TEXT,
+                
+                FOREIGN KEY (habitacion) REFERENCES habitaciones(numero),
+                FOREIGN KEY (tecnico_id) REFERENCES personal(id)
             );
             """)
             conn.commit()
             print('8. Tabla "tickets_mantenimiento" creada exitosamente')
-
-            #9. mantenimiento
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS mantenimiento(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                id_ticket INTEGER NOT NULL,
-                tipo_problema TEXT NOT NULL,
-                fecha_reporte DATE NOT NULL,
-                fecha_inicio DATE,
-                fecha_fin DATE,
-                descripcion_problema TEXT NOT NULL,
-                descripcion_solucion TEXT,
-                tecnico_asignado TEXT NOT NULL,
-                completado BOOLEAN DEFAULT 0,
-                fecha_creacion DATETIME DEFAULT (datetime('now')),
-                notas TEXT,
-                FOREIGN KEY (id_ticket) REFERENCES tickets_mantenimiento(id)
-            );
-            """)
-            conn.commit()
-            print('9. Tabla "mantenimiento_correctivo" creada exitosamente')
 
             #10. walkins
             cursor.execute("""
@@ -480,20 +465,16 @@ def insertar_datos_muestra():
 
             # Insertar Tickets de Mantenimiento
             cursor.execute("""
-            INSERT INTO tickets_mantenimiento (habitacion, descripcion, estado, prioridad, tecnico_asignado) VALUES
-            ('202', 'Aire acondicionado no funciona', 'Asignado', 'Alta', 'Carlos Méndez'),
-            ('103', 'Fuga de agua en baño', 'En Progreso', 'Alta', 'Roberto Silva'),
-            ('302', 'Cerradura defectuosa', 'Nuevo', 'Media', 'Carlos Méndez'),
-            ('102', 'Luz del baño no funciona', 'Completado', 'Media', 'Roberto Silva');
-            """)
-
-            # Insertar Mantenimiento
-            cursor.execute("""
-            INSERT INTO mantenimiento (id_ticket, tipo_problema, fecha_reporte, fecha_inicio, descripcion_problema, descripcion_solucion, tecnico_asignado, completado) VALUES
-            (1, 'Falla HVAC', date('now', '-2 days'), date('now', '-1 day'), 'Aire acondicionado no enfría correctamente', 'Cambio de filtros y limpieza de conductos', 'Carlos Méndez', 0),
-            (2, 'Fuga de agua', date('now', '-1 day'), date('now'), 'Fuga de agua en la ducha', 'Reparación de válvula y sellado', 'Roberto Silva', 0),
-            (3, 'Falla eléctrica', date('now'), NULL, 'Cerradura eléctrica no responde', NULL, 'Carlos Méndez', 0),
-            (4, 'Falla eléctrica', date('now', '-3 days'), date('now', '-2 days'), 'Luz del baño parpadea', 'Cambio de bombilla y revisión de conexiones', 'Roberto Silva', 1);
+            INSERT INTO tickets_mantenimiento 
+            (habitacion, area_hotel, descripcion, estado, prioridad, tecnico_id, fecha_asignacion, fecha_fin, descripcion_solucion) VALUES
+            ('202', NULL, 'Aire acondicionado no funciona', 'Asignado', 'Alta', 4, '2025-10-05', NULL, NULL),
+            ('103', NULL, 'Fuga de agua en baño', 'En Progreso', 'Alta', 2, '2025-10-05', NULL, NULL),
+            ('302', NULL, 'Cerradura defectuosa', 'Sin asignar', 'Media', NULL, NULL, NULL, NULL),
+            ('102', NULL, 'Luz del baño no funciona', 'Completado', 'Media', 2, '2025-10-04', '2025-10-04', 'Se reemplazó el bombillo y se verificó el circuito'),
+            (NULL, 'Piscina', 'Sistema de bombas no arranca', 'En Progreso', 'Alta', 4, '2025-10-05', NULL, NULL),
+            (NULL, 'Lobby', 'Falla en aire central', 'Asignado', 'Alta', 2, '2025-10-05', NULL, NULL),
+            (NULL, 'Ascensor', 'Botón de emergencia no responde', 'Completado', 'Alta', 4, '2025-10-03', '2025-10-03', 'Se reemplazó el panel de control del botón de emergencia'),
+            (NULL, 'Restaurante', 'Horno eléctrico no enciende', 'Sin asignar', 'Media', NULL, NULL, NULL, NULL);
             """)
 
             # Insertar Housekeeping Plan
@@ -577,7 +558,6 @@ def limpiar_datos():
             cursor.execute("DELETE FROM buffet;")
             cursor.execute("DELETE FROM checkins_checkouts;")
             cursor.execute("DELETE FROM walk_ins;")
-            cursor.execute("DELETE FROM mantenimiento;")
             cursor.execute("DELETE FROM tickets_mantenimiento;")
             cursor.execute("DELETE FROM turnos;")
             cursor.execute("DELETE FROM housekeeping_plan;")
@@ -601,8 +581,6 @@ def limpiar_datos():
             SELECT 'checkins_checkouts', COUNT(*) FROM checkins_checkouts
             UNION ALL
             SELECT 'walk_ins', COUNT(*) FROM walk_ins
-            UNION ALL
-            SELECT 'mantenimiento_correctivo', COUNT(*) FROM mantenimiento
             UNION ALL
             SELECT 'tickets_mantenimiento', COUNT(*) FROM tickets_mantenimiento
             UNION ALL
@@ -1738,3 +1716,42 @@ def eliminar_cotizacion_buffet(id_):
         cursor.execute('DELETE FROM buffet WHERE id = ?', (id_,))
         conn.commit()
         conn.close()
+
+def obtener_tickets():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT 
+                t.id AS ticket_id,
+                CASE
+                    WHEN t.habitacion IS NOT NULL THEN 'Hab. ' || t.habitacion
+                    ELSE t.area_hotel
+                END AS ubicacion,
+                t.descripcion,
+                t.estado,
+                t.prioridad,
+                p.nombre || ' ' || p.apellido AS tecnico
+            FROM tickets_mantenimiento AS t
+            LEFT JOIN personal AS p ON t.tecnico_id = p.id
+            WHERE 
+                -- Mostrar todos excepto los completados antiguos
+                t.estado != 'Finalizado' 
+                OR (t.estado = 'Finalizado' AND date(t.fecha_fin) = date('now'))
+            ORDER BY 
+                CASE t.estado
+                    WHEN 'Sin asignar' THEN 1
+                    WHEN 'Asignado' THEN 2
+                    WHEN 'En progreso' THEN 3
+                    WHEN 'Finalizado' THEN 4
+                    ELSE 5
+                END,
+                t.fecha_creacion ASC;
+            """)
+            resultado = cursor.fetchall()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener tickets: {e}')
+        finally:
+            conn.close()
