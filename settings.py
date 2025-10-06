@@ -26,8 +26,25 @@ GRIS_CLARO2 = '#DDDDDD'
 GRIS_CLARO3 = '#EEEEEE'
 GRIS_CLARO4 = '#ecf0f1'
 
+# Precios configurables para el módulo de eventos
+# Tarifas de catering por persona (moneda local)
+CATERING_RATES = {
+    'Buffet': 18.0,
+    'Cocktail': 12.0,
+    'Servicio a mesa': 25.0,
+    'Sin catering': 0.0,
+}
+
+# Tarifas fijas por equipamiento
+EQUIP_FEES = {
+    'Proyector': 200.0,
+    'Sonido': 350.0,
+    'Iluminación': 300.0,
+    'Micrófonos': 80.0,
+}
+
 #botones y encabezados
-BTN_HEAD = ['📊 Dashboard', '👥 Gestor de Clientes', '🏠 Gestión de Habitaciones', '📅 Gestor de Reservas', '🧹 Logística',  '🍽️Cotización de Buffet', '🏨 Front Desk']
+BTN_HEAD = ['📊 Dashboard', '👥 Gestor de Clientes', '🏠 Gestión de Habitaciones', '📅 Gestor de Reservas', '🧹 Logística',  '🍽️Cotización de Buffet', '🏨 Front Desk', '🎉 Cotización de Eventos']
 
 #letras
 FUENTE = 'Arial'

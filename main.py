@@ -14,6 +14,7 @@ from reservas import *
 from logistica import *
 from buffet import *
 from frontdesk import *
+from eventos import *
 
 class App(ctk.CTk):
     def __init__(self):
@@ -60,6 +61,9 @@ class App(ctk.CTk):
         self.btn_front = self.sidebar.crear_boton_nav(BTN_HEAD[6], metodo=self.mostrar_front)
         self.btn_front.pack(fill='x', padx = 6, pady = 6, ipadx = 16, ipady = 16)
 
+        self.btn_eventos = self.sidebar.crear_boton_nav(BTN_HEAD[7], metodo=self.mostrar_eventos)
+        self.btn_eventos.pack(fill='x', padx=6, pady=6, ipadx=16, ipady=16)
+
         self.btn_buffet = self.sidebar.crear_boton_nav(BTN_HEAD[5], metodo=self.mostrar_buffet)
         self.btn_buffet.pack(fill='x', padx=6, pady=6, ipadx=16, ipady=16)
 
@@ -84,6 +88,7 @@ class App(ctk.CTk):
         self.btn_logistica.configure(fg_color = 'transparent')
         self.btn_buffet.configure(fg_color = 'transparent')
         self.btn_front.configure(fg_color = 'transparent')
+        self.btn_eventos.configure(fg_color = 'transparent')
     
     def mostrar_dashboard(self):
         self.limpiar_mainframe()
@@ -135,6 +140,13 @@ class App(ctk.CTk):
         self.main_frame.label_titulo.configure(text = BTN_HEAD[5])
         self.btn_buffet.configure(fg_color = '#34495e')
         self.buffet = CotizacionBuffet(self.main_frame.modulos)
+
+    def mostrar_eventos(self):
+        self.limpiar_mainframe()
+        self.inactivar_botones()
+        self.main_frame.label_titulo.configure(text = BTN_HEAD[7])
+        self.btn_eventos.configure(fg_color = '#34495e')
+        self.eventos = CotizacionEventos(self.main_frame.modulos)
 
     def mostrar_logistica(self):
         self.limpiar_mainframe()

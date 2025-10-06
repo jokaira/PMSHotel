@@ -1796,3 +1796,41 @@ def guardar_ticket(data, tipo):
             return False, f"Error al guardar datos: {e}"
         finally:
             conn.close()
+
+def obtener_cotizaciones_eventos():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM eventos ORDER BY fecha DESC')
+        return cursor.fetchall()
+    return []
+
+def insertar_cotizacion_evento(tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute('''INSERT INTO eventos (tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas) 
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                       (tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas))
+        conn.commit()
+        conn.close()
+
+def eliminar_cotizacion_evento(id_):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM eventos WHERE id = ?', (id_,))
+        conn.commit()
+        conn.close()
+
+def actualizar_cotizacion_evento(id_, tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE eventos
+            SET tipo = ?, salon = ?, fecha = ?, hora = ?, equipamiento = ?, categoria = ?, personas = ?, tarifa_salon = ?, total = ?, notas = ?
+            WHERE id = ?
+        ''', (tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas, id_))
+        conn.commit()
+        conn.close()
