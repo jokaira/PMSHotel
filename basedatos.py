@@ -1797,6 +1797,39 @@ def guardar_ticket(data, tipo):
         finally:
             conn.close()
 
+def descartar_ticket(razon, id):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE tickets_mantenimiento
+                SET estado = 'Descartado', fecha_inicio = date('now'), fecha_fin = date('now'),descripcion_solucion = ?
+                WHERE id = ?
+            """,(razon, id))
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
+
+def ver_detalle_ticket(id):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT * FROM tickets_mantenimiento
+            WHERE id = ?;
+            """, (id,))
+            resultado = cursor.fetchone()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener información: {e}')
+        finally:
+            conn.close()
+
 def obtener_cotizaciones_eventos():
     conn = conectar_bd()
     if conn:

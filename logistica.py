@@ -94,6 +94,8 @@ class GestorLogistica(ctk.CTkFrame):
         self.btn_personal.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_turnos.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.logistica.configure(border_width = 0)
+
+        self.selec = []
         
         #kpi de housekeeping
         self.kpis = ctk.CTkFrame(master=self.logistica, fg_color='transparent', corner_radius=0)
@@ -359,6 +361,7 @@ class GestorLogistica(ctk.CTkFrame):
         self.btn_personal.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_turnos.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.logistica.configure(border_width = 0)
+        self.selec = []
 
         inventario_actual = ctk.CTkFrame(master=self.logistica, 
                                               fg_color='transparent',
@@ -1061,6 +1064,7 @@ class GestorLogistica(ctk.CTkFrame):
         self.btn_personal.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_turnos.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.logistica.configure(border_width = 0)
+        self.selec = []
 
         gestion_tickets = ctk.CTkFrame(master=self.logistica,fg_color='transparent')
         gestion_tickets.pack(fill = 'x', anchor = 'n', pady = 8)
@@ -1081,21 +1085,29 @@ class GestorLogistica(ctk.CTkFrame):
             metodo= lambda: self.modal_mantenimiento("nuevo")
         )
 
+        btn_ver = Boton(
+            master=gestion_tickets,
+            texto="Ver detalles",
+            metodo= lambda: self.modal_mantenimiento("ver")
+        )
+
+        btn_descartar = Boton(
+            master=gestion_tickets,
+            texto="Descartar ticket",
+            color=PRIMARIO,
+            hover=ROJO,
+            metodo= self.descartar_ticket
+        )
+
     def selec_ticket(self, fila):
         if fila == 0:
             return
-        valores = [w.cget('text') for w, _ in self.celdas_inv[fila]]
+        valores = [w.cget('text') for w, _ in self.celdas[fila]]
         self.selec = valores
         print(self.selec)
 
-        if hasattr(self, "celdas_trans"):
-          for f, fila_widgets in enumerate(self.celdas_trans):
-              for w, es_badge in fila_widgets:
-                  default_bg = 'transparent' if f % 2 == 0 else GRIS_CLARO4
-                  w.configure(fg_color=default_bg, text_color=OSCURO)
-
         #resaltado
-        for f, fila_widgets in enumerate(self.celdas_inv):
+        for f, fila_widgets in enumerate(self.celdas):
             for w, es_badge in fila_widgets:
                 if es_badge:
                     continue
@@ -1113,7 +1125,7 @@ class GestorLogistica(ctk.CTkFrame):
                         default_bg = GRIS_CLARO4
                         default_text = OSCURO
 
-                    w.configure(fg_color=default_bg, text_color=default_text)
+                    w.configure(fg_color=default_bg, text_color=default_text)  
 
     def tabla_tickets(self, data):
         for w in self.contenedor_tabla.winfo_children():
@@ -1130,10 +1142,11 @@ class GestorLogistica(ctk.CTkFrame):
                     'Completado': VERDE1,
                     'Alta': PRIMARIO,
                     'Media': MAMEY,
-                    'Baja': VERDE2
+                    'Baja': VERDE2,
+                    'Descartado': PRIMARIO
                   }
 
-        self.celdas_inv = []
+        self.celdas = []
         for f, fila in enumerate(data):
             fila_widgets = []
             for c, texto in enumerate(fila):
@@ -1185,15 +1198,26 @@ class GestorLogistica(ctk.CTkFrame):
 
                   #bind capturando fila
                   fila_widgets.append(widget_celda)
-            self.celdas_inv.append(fila_widgets) 
+            self.celdas.append(fila_widgets) 
 
     def modal_mantenimiento(self, tipo):
             titulo_ventana = ""
             titulo_modal = ""
+
+            if tipo == 'ver' and len(self.selec) == 0:
+                messagebox.showerror("Error", "Debe primero seleccionar un ticket para ver los detalles")
+                return
+
             match tipo:
                 case "nuevo":
                     titulo_ventana = "Crear nuevo ticket"
                     titulo_modal = titulo_ventana
+                case 'descartar':
+                    titulo_ventana = "Descartar ticket"
+                    titulo_modal = titulo_ventana
+                case 'ver':
+                    titulo_ventana = "Ver detalles del ticket"
+                    titulo_modal = "Detalles del ticket"
 
             dialogo = ctk.CTkToplevel(self, fg_color=CLARO)
             dialogo.title(titulo_ventana)
@@ -1214,7 +1238,11 @@ class GestorLogistica(ctk.CTkFrame):
             match tipo:
                 case "nuevo":
                     self.nuevo_ticket(master = dialogo)
-    
+                case 'descartar':
+                    self.razon_descartar(master=dialogo)
+                case 'ver':
+                    self.ver_ticket(master=dialogo)
+
     def nuevo_ticket(self, master):
         frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
         frame_formulario.pack(fill = 'both', expand = True, padx = 15)
@@ -1364,3 +1392,148 @@ class GestorLogistica(ctk.CTkFrame):
                       corner_radius=10,
                       command=guardar,
                         ).grid(row = 6, column = 2, pady = 12)
+        
+    def razon_descartar(self, master):
+        frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
+        frame_formulario.pack(fill = 'both', expand = True, padx = 15)
+
+        frame_formulario.columnconfigure(index=(0,1,2,3), weight = 1, uniform='x')
+
+        descripcion = ctk.StringVar()
+
+        # letrero de campos obligatorios
+        obligatorio = ctk.CTkLabel(master=frame_formulario, text="*: Campos obligatorios")
+        obligatorio.place(relx = 0.95, rely = 0.95, anchor = 'se')
+
+        #descripcion
+        ctk.CTkLabel(master=frame_formulario,
+                        text='Razon del descarte*',
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                        ).grid(row = 0, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=descripcion,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 1, column = 0, columnspan = 4, sticky = 'nsew', pady = 12)
+
+        
+        def guardar():
+            razon = f"Descartado: {descripcion.get().strip()}"
+            id_ticket = self.selec[0]
+
+            if not razon or not id_ticket:
+                messagebox.showerror("Error", "Por favor complete todos los campos obligatorios")
+                return
+            
+            fue_exitoso, mensaje = basedatos.descartar_ticket(razon=razon, id=id_ticket)
+
+            if not fue_exitoso:
+                messagebox.showerror("Error", mensaje)
+                return
+            
+            messagebox.showinfo("Éxito", "El ticket ha sido descartado exitosamente")
+            master.destroy()
+            self.tabla_tickets([ENCABEZADO_TICKETS_MANT] + [t for t in TICKETS_MANTENIMIENTO()])
+        
+        #cancelar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Cancelar',
+                      fg_color=PRIMARIO,
+                      hover_color=ROJO,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=master.destroy,
+                        ).grid(row = 6, column = 1, pady = 12)
+        
+        #boton guardar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Guardar',
+                      fg_color=VERDE1,
+                      hover_color=VERDE2,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=guardar,
+                        ).grid(row = 6, column = 2, pady = 12)
+
+    def descartar_ticket(self):
+        if len(self.selec) == 0:
+            messagebox.showerror("Error", "Debe de seleccionar un ticket")
+            return
+        
+        if self.selec[3] == "DESCARTADO":
+            messagebox.showerror("Error", "Este ticket ya fue descartado")
+            return
+        
+        confirmacion = messagebox.askyesno("Advertencia", "¿Está seguro que desea descartar este ticket?")
+
+        if confirmacion:
+            self.modal_mantenimiento('descartar')
+
+    def ver_ticket(self, master):
+        ticket = list(basedatos.ver_detalle_ticket(self.selec[0]))
+
+        ticket[1] = self.selec[1]
+        ticket.pop(2)
+        ticket[5] = self.selec[5]
+        ticket.pop(8)
+
+        descripcion = ['ID del Ticket', 'Ubicación', 'Descripción', 'Estado', 'Prioridad', 'Técnico asignado', 'Fecha de creación', 'Fecha de asignación', 'Fecha de Cierre', 'Solución', 'Notas adicionales']
+
+        contenedor = ctk.CTkFrame(master=master, fg_color=GRIS_CLARO4)
+        contenedor.pack(fill = 'both', expand = True, padx = 16, pady = (0,10))
+        
+        contenedor.columnconfigure(index=(0,1,2,3), weight = 1, uniform= 'k')
+
+        fila = 0
+        lado_izq = True
+        
+        for desc, valor in zip(descripcion, ticket):
+            texto_valor = str(valor) if valor is not None else "No especificado"
+
+            # Campos que deben ocupar una fila completa
+            if desc in ['Descripción', 'Solución', 'Notas adicionales']:
+                label_desc = ctk.CTkLabel(
+                    contenedor, text=desc + ": ", text_color=OSCURO,
+                    font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                )
+                label_val = ctk.CTkLabel(
+                    contenedor, text=texto_valor, text_color=OSCURO,
+                    font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                    wraplength=600, justify="left"
+                )
+                label_desc.grid(row=fila, column=0, padx=(8, 2), pady=4, sticky="ne")
+                label_val.grid(row=fila, column=1, columnspan=3, padx=(2, 8), pady=4, sticky="w")
+
+                # Avanzar una fila y reiniciar el lado
+                fila += 1
+                lado_izq = True
+                continue
+
+            # Campos normales (dos por fila)
+            if lado_izq:
+                col_desc, col_val = 0, 1
+            else:
+                col_desc, col_val = 2, 3
+
+            label_desc = ctk.CTkLabel(
+                contenedor, text=desc + ": ", text_color=OSCURO,
+                font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+            )
+            label_val = ctk.CTkLabel(
+                contenedor, text=texto_valor, text_color=OSCURO,
+                font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+            )
+            label_desc.grid(row=fila, column=col_desc, padx=(8, 2), pady=4, sticky="e")
+            label_val.grid(row=fila, column=col_val, padx=(2, 8), pady=4, sticky="w")
+
+            # Alternar lado o avanzar fila si ya se llenaron las dos columnas
+            if lado_izq:
+                lado_izq = False
+            else:
+                lado_izq = True
+                fila += 1
