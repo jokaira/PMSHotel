@@ -73,18 +73,6 @@ class GestorLogistica(ctk.CTkFrame):
                           )
             self.btn_personal.pack(side ='left', padx = 5)
 
-            self.btn_turnos = ctk.CTkButton(master=master, 
-                          text= 'Turnos',
-                          fg_color=GRIS_CLARO,
-                          hover_color=GRIS,
-                          command= "",
-                          text_color=OSCURO,
-                          font = (FUENTE,TAMANO_TEXTO_DEFAULT), 
-                          height=44,
-                          corner_radius=10
-                          )
-            self.btn_turnos.pack(side ='left', padx = 5)
-
     def housekeeping(self):
         for w in self.logistica.winfo_children():
              w.destroy()
@@ -92,7 +80,6 @@ class GestorLogistica(ctk.CTkFrame):
         self.btn_mantenimiento.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_inventario.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_personal.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
-        self.btn_turnos.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.logistica.configure(border_width = 0)
 
         self.selec = []
@@ -359,7 +346,6 @@ class GestorLogistica(ctk.CTkFrame):
         self.btn_mantenimiento.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_housekeeping.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_personal.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
-        self.btn_turnos.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.logistica.configure(border_width = 0)
         self.selec = []
 
@@ -1062,7 +1048,6 @@ class GestorLogistica(ctk.CTkFrame):
         self.btn_housekeeping.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_inventario.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.btn_personal.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
-        self.btn_turnos.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
         self.logistica.configure(border_width = 0)
         self.selec = []
 
@@ -1074,7 +1059,7 @@ class GestorLogistica(ctk.CTkFrame):
         self.contenedor_tabla = ctk.CTkFrame(gestion_tickets, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
         self.contenedor_tabla.pack(fill='both', expand=True, padx = 12, pady = (0,8))
 
-        #tickets activos
+        #tickets
         self.tabla_tickets([ENCABEZADO_TICKETS_MANT] + [t for t in TICKETS_MANTENIMIENTO()])
 
         btn_nuevo = Boton(
@@ -1089,6 +1074,14 @@ class GestorLogistica(ctk.CTkFrame):
             master=gestion_tickets,
             texto="Ver detalles",
             metodo= lambda: self.modal_mantenimiento("ver")
+        )
+
+        btn_asignar = Boton(
+            master=gestion_tickets,
+            texto="Asignar técnico",
+            color=MORADO,
+            hover="#A472B7",
+            metodo= lambda: self.modal_mantenimiento("asignar")
         )
 
         btn_descartar = Boton(
@@ -1207,6 +1200,10 @@ class GestorLogistica(ctk.CTkFrame):
             if tipo == 'ver' and len(self.selec) == 0:
                 messagebox.showerror("Error", "Debe primero seleccionar un ticket para ver los detalles")
                 return
+            
+            if tipo == 'asignar' and len(self.selec) == 0:
+                messagebox.showerror("Error", "Debe primero seleccionar un ticket para asignar un técnico")
+                return
 
             match tipo:
                 case "nuevo":
@@ -1218,22 +1215,25 @@ class GestorLogistica(ctk.CTkFrame):
                 case 'ver':
                     titulo_ventana = "Ver detalles del ticket"
                     titulo_modal = "Detalles del ticket"
+                case 'asignar':
+                    titulo_ventana = "Asignar técnico de mantenimiento"
 
             dialogo = ctk.CTkToplevel(self, fg_color=CLARO)
             dialogo.title(titulo_ventana)
-            dialogo.geometry("720x380")
+            dialogo.geometry("720x380" if tipo != 'asignar' else '300x200')
             dialogo.resizable(False,False)
             dialogo.transient(self)
             dialogo.grab_set()
             
             #titulo
-            ctk.CTkLabel(dialogo, 
-                        text= titulo_modal, 
-                        text_color=OSCURO, 
-                        font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
-                        ).pack(anchor = 'w', pady = (16,0), padx = 16)
-            
-            ctk.CTkFrame(dialogo, height=2, fg_color=OSCURO).pack(fill = 'x',  padx = 15, pady =10)
+            if tipo != 'asignar':
+                ctk.CTkLabel(dialogo, 
+                            text= titulo_modal, 
+                            text_color=OSCURO, 
+                            font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                            ).pack(anchor = 'w', pady = (16,0), padx = 16)
+                
+                ctk.CTkFrame(dialogo, height=2, fg_color=OSCURO).pack(fill = 'x',  padx = 15, pady =10)
 
             match tipo:
                 case "nuevo":
@@ -1242,6 +1242,8 @@ class GestorLogistica(ctk.CTkFrame):
                     self.razon_descartar(master=dialogo)
                 case 'ver':
                     self.ver_ticket(master=dialogo)
+                case 'asignar':
+                    self.asignar_tecnico(master = dialogo)
 
     def nuevo_ticket(self, master):
         frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
@@ -1537,3 +1539,77 @@ class GestorLogistica(ctk.CTkFrame):
             else:
                 lado_izq = True
                 fila += 1
+
+    def asignar_tecnico(self, master):
+        frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
+        frame_formulario.pack(fill = 'both', expand = True, padx = 10)
+
+        tecnico = ctk.StringVar()
+        tecnicos = basedatos.obtener_tecnicos() if basedatos.obtener_tecnicos() else ['No hay técnicos de mantenimiento']
+
+         #descripcion
+        ctk.CTkLabel(master=frame_formulario,
+                        text='Técnico a asignar',
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                        ).grid(row = 0, column = 0, columnspan = 2,sticky = 'nsew', pady = 12)
+        ctk.CTkComboBox(master=frame_formulario,
+                        variable=tecnico,
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        button_color=GRIS_CLARO,
+                        button_hover_color=GRIS,
+                        dropdown_fg_color=CLARO,
+                        dropdown_hover_color=GRIS_CLARO,
+                        dropdown_text_color=OSCURO,
+                        dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        border_color=GRIS,
+                        border_width=1,
+                        values=tecnicos
+                        ).grid(row=1, column=0, columnspan = 2,sticky = 'nsew', pady= (0,12))
+        
+        def guardar():
+            if tecnico.get().strip() == 'No hay técnicos de mantenimiento':
+                messagebox.showerror('Error','No hay técnicos de mantenimiento activos')
+                return
+
+            id_ticket = self.selec[0]
+            cod_emp = tecnico.get().strip()[:6]
+
+            data = [
+                basedatos.id_empleado(cod_emp),
+                id_ticket,
+            ]
+            
+            ticket_asignado, mensaje = basedatos.asignar_ticket(datos=data)
+            if not ticket_asignado:
+                messagebox.showerror('Error', mensaje)
+
+            messagebox.showinfo("Técnico asignado", "El técnico fue asignado exitosamente")
+
+            #actualizar tabla
+            from settings import TICKETS_MANTENIMIENTO
+            self.tabla_tickets([ENCABEZADO_TICKETS_MANT] + [t for t in TICKETS_MANTENIMIENTO()])
+            master.destroy()
+
+        #cancelar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Cancelar',
+                      fg_color=PRIMARIO,
+                      hover_color=ROJO,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=master.destroy,
+                        ).grid(row = 2, column = 1, pady = 12)
+        
+        #boton guardar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Guardar',
+                      fg_color=VERDE1,
+                      hover_color=VERDE2,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=guardar,
+                        ).grid(row = 2, column = 0, pady = 12)

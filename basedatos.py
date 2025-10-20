@@ -1830,6 +1830,43 @@ def ver_detalle_ticket(id):
         finally:
             conn.close()
 
+def obtener_tecnicos():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT * FROM personal
+            WHERE area_id = 2 AND estado = 'Activo'
+            ORDER BY codigo;
+            """)
+            consulta = cursor.fetchall()
+            resultado = []
+            for empleado in consulta:
+                resultado.append(f'{empleado[1]} - {empleado[2]} {empleado[3]}')
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener empleados: {e}')
+        finally:
+            conn.close() 
+
+def asignar_ticket(datos):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE tickets_mantenimiento
+                SET estado = 'Asignado', tecnico_id = ?, fecha_asignacion = date('now')
+                WHERE id = ?
+            """,(datos))
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
+
 def obtener_cotizaciones_eventos():
     conn = conectar_bd()
     if conn:
