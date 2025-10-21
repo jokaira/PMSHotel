@@ -1867,6 +1867,30 @@ def asignar_ticket(datos):
         finally:
             conn.close()
 
+def estado_ticket(estado, id, solucion = None, notas = None):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            if estado == "En Progreso":
+                cursor.execute("""
+                    UPDATE tickets_mantenimiento
+                    SET estado = ?, fecha_inicio = date('now')
+                    WHERE id = ?
+                """,(estado, id))
+            else:
+                cursor.execute("""
+                    UPDATE tickets_mantenimiento
+                    SET estado = ?, fecha_fin = date('now'), descripcion_solucion = ?, notas = ?
+                    WHERE id = ?
+                """,(estado, solucion, notas, id))
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
+
 def obtener_cotizaciones_eventos():
     conn = conectar_bd()
     if conn:

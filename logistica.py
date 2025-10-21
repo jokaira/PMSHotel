@@ -1092,6 +1092,20 @@ class GestorLogistica(ctk.CTkFrame):
             metodo= self.descartar_ticket
         )
 
+        btn_en_proceso = Boton(
+            master=gestion_tickets,
+            texto="Marcar como En Progreso",
+            metodo= self.marcar_en_progreso
+        )
+
+        btn_completado = Boton(
+            master=gestion_tickets,
+            texto="Marcar como Completado",
+            color=VERDE1,
+            hover=VERDE2,
+            metodo= self.marcar_completado
+        )
+
     def selec_ticket(self, fila):
         if fila == 0:
             return
@@ -1217,6 +1231,9 @@ class GestorLogistica(ctk.CTkFrame):
                     titulo_modal = "Detalles del ticket"
                 case 'asignar':
                     titulo_ventana = "Asignar técnico de mantenimiento"
+                case 'completado':
+                    titulo_ventana = "Marcar como Completado"
+                    titulo_modal = titulo_ventana
 
             dialogo = ctk.CTkToplevel(self, fg_color=CLARO)
             dialogo.title(titulo_ventana)
@@ -1244,6 +1261,8 @@ class GestorLogistica(ctk.CTkFrame):
                     self.ver_ticket(master=dialogo)
                 case 'asignar':
                     self.asignar_tecnico(master = dialogo)
+                case 'completado':
+                    self.formulario_ticket_completado(master = dialogo)
 
     def nuevo_ticket(self, master):
         frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
@@ -1613,3 +1632,121 @@ class GestorLogistica(ctk.CTkFrame):
                       corner_radius=10,
                       command=guardar,
                         ).grid(row = 2, column = 0, pady = 12)
+        
+    def marcar_en_progreso(self):
+        if len(self.selec) == 0:
+            messagebox.showerror("Error", "Debe de seleccionar un ticket")
+            return
+        
+        if self.selec[3] == "DESCARTADO":
+            messagebox.showerror("Error", "Este ticket ya fue descartado")
+            return
+        elif self.selec[3] == "SIN ASIGNAR":
+            messagebox.showerror("Error", "Este ticket no tiene un técnico asignado")
+            return
+        elif self.selec[3] == "EN PROGRESO":
+            messagebox.showerror("Error", "Este ticket ya fue marcado en progreso")
+            return
+        elif self.selec[3] == "COMPLETADO":
+            messagebox.showerror("Error", "Este ticket ya fue marcado como completado")
+            return
+
+        confirmacion = messagebox.askyesno("Advertencia", '¿Está seguro que desea marcar este ticket como "En progreso"?')
+
+        if confirmacion:
+           basedatos.estado_ticket("En Progreso", self.selec[0])  
+
+           messagebox.showinfo("Éxito", "El estado ha sido cambiado exitosamente")
+           self.tabla_tickets([ENCABEZADO_TICKETS_MANT] + [t for t in TICKETS_MANTENIMIENTO()])           
+
+    def marcar_completado(self):
+        if len(self.selec) == 0:
+            messagebox.showerror("Error", "Debe de seleccionar un ticket")
+            return
+        
+        if self.selec[3] == "DESCARTADO":
+            messagebox.showerror("Error", "Este ticket ya fue descartado")
+            return
+        elif self.selec[3] == "SIN ASIGNAR" or self.selec[3] == "ASIGNADO":
+            messagebox.showerror("Error", 'Este ticket no ha sido marcado como "En progreso" y no tiene fecha de inicio de trabajo')
+            return
+        elif self.selec[3] == "COMPLETADO":
+            messagebox.showerror("Error", "Este ticket ya fue marcado como completado")
+            return
+
+        confirmacion = messagebox.askyesno("Advertencia", '¿Está seguro que desea marcar este ticket como completado?')
+
+        if confirmacion:
+            self.modal_mantenimiento('completado')
+
+    def formulario_ticket_completado(self, master):
+        frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
+        frame_formulario.pack(fill = 'both', expand = True, padx = 15)
+
+        frame_formulario.columnconfigure(index=(0,1,2,3), weight = 1, uniform='x')
+
+        solucion = ctk.StringVar()
+        notas = ctk.StringVar()
+
+        #solucion
+        ctk.CTkLabel(master=frame_formulario,
+                        text='Descripción de la solución',
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                        ).grid(row = 0, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=solucion,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 1, column = 0, columnspan = 4, sticky = 'nsew', pady = 12)
+        
+        #notas
+        ctk.CTkLabel(master=frame_formulario,
+                        text='Notas adicionales',
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                        ).grid(row = 2, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=notas,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 3, column = 0, columnspan = 4, sticky = 'nsew', pady = 12)
+
+        
+        def guardar():
+            
+            fue_exitoso, mensaje = basedatos.estado_ticket(estado='Completado', id=self.selec[0], solucion=solucion.get().strip(), notas=notas.get().strip())
+
+            if not fue_exitoso:
+                messagebox.showerror("Error", mensaje)
+                return
+            
+            messagebox.showinfo("Éxito", "El ticket ha sido marcado como completado exitosamente")
+            master.destroy()
+            self.tabla_tickets([ENCABEZADO_TICKETS_MANT] + [t for t in TICKETS_MANTENIMIENTO()])
+        
+        #cancelar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Cancelar',
+                      fg_color=PRIMARIO,
+                      hover_color=ROJO,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=master.destroy,
+                        ).grid(row = 6, column = 1, pady = 12)
+        
+        #boton guardar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Guardar',
+                      fg_color=VERDE1,
+                      hover_color=VERDE2,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=guardar,
+                        ).grid(row = 6, column = 2, pady = 12)
