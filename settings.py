@@ -31,6 +31,7 @@ GRIS_CLARO4 = '#ecf0f1'
 CATERING_RATES = {
     'Buffet': 18.0,
     'Cocktail': 12.0,
+    'Coffee break': 8.0,
     'Servicio a mesa': 25.0,
     'Sin catering': 0.0,
 }
@@ -41,6 +42,24 @@ EQUIP_FEES = {
     'Sonido': 350.0,
     'Iluminación': 300.0,
     'Micrófonos': 80.0,
+}
+
+# Capacidades máximas por salón (aforo)
+SALON_CAPACITIES = {
+    'Salón A': 50,
+    'Salón B': 100,
+    'Salón C': 150,
+    'Salón Principal': 200,
+}
+
+# Máximo global de personas permitido en cualquier cotización. Puede ajustarse aquí.
+MAX_PERSONAS = 200
+
+# Coste por mesa (opcional). Se suma al total de la cotización como costo fijo por mesa.
+TABLE_FEES = {
+    '4': 5.0,   # coste por mesa de 4 personas
+    '8': 8.0,   # coste por mesa de 8 personas
+    '12': 12.0, # coste por mesa de 12 personas
 }
 
 #botones y encabezados
