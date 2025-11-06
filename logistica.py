@@ -1788,8 +1788,14 @@ class GestorLogistica(ctk.CTkFrame):
             color=MORADO,
             hover="#A472B7"
         )
-        #TODO: Agregar boton de desactivar empleado
-
+        
+        btn_desactivar = Boton(
+            master=gestion_personal,
+            texto="Desactivar empleado",
+            metodo= self.inactivar_empleado,
+            color=PRIMARIO,
+            hover=ROJO
+        )
 
     def tabla_personal(self, data):
         for w in self.contenedor_tabla.winfo_children():
@@ -1976,7 +1982,10 @@ class GestorLogistica(ctk.CTkFrame):
             titulo_modal = ""
 
             if tipo == 'ver' and len(self.selec) == 0:
-                messagebox.showerror("Error", "Debe primero seleccionar un ticket para ver los detalles")
+                messagebox.showerror("Error", "Debe primero seleccionar un empleado para ver los detalles")
+                return
+            elif tipo == 'editar' and len(self.selec) == 0:
+                messagebox.showerror("Error", "Debe primero seleccionar un empleado para editar sus datos")
                 return
 
             match tipo:
@@ -1986,6 +1995,9 @@ class GestorLogistica(ctk.CTkFrame):
                 case 'ver':
                     titulo_ventana = "Ver detalles del empleado"
                     titulo_modal = "Detalles del empleado"
+                case 'editar':
+                    titulo_ventana = "Editar datos del empleado"
+                    titulo_modal = titulo_ventana
 
             dialogo = ctk.CTkToplevel(self, fg_color=CLARO)
             dialogo.title(titulo_modal)
@@ -1996,14 +2008,219 @@ class GestorLogistica(ctk.CTkFrame):
             
             match tipo:
                 case "nuevo":
-                    self.agregar_empleado(master = dialogo)
+                    self.ajuste_empleado(master = dialogo, tipo = "agregar")
                 case 'ver':
                     self.ver_empleado(master=dialogo)
                 case 'editar':
-                    pass #TODO
+                    self.ajuste_empleado(master = dialogo, tipo= "editar")
 
-    def agregar_empleado(self, master):
-        pass #TODO
+    def ajuste_empleado(self, master, tipo):
+        frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
+        frame_formulario.pack(fill = 'both', expand = True, padx = 15)
+
+        frame_formulario.columnconfigure(index=(0,1,2,3), weight = 1, uniform='x')
+
+        #variables de los campos
+        codigo = ctk.StringVar() 
+        nombres = ctk.StringVar()
+        apellidos = ctk.StringVar()
+        puesto = ctk.StringVar()
+        area = ctk.StringVar() #lista desplegable
+        salario_hora = ctk.DoubleVar()
+        telefono = ctk.StringVar()
+        email = ctk.StringVar()
+        
+        #modo agregar
+        if tipo == "agregar":
+            nuevo_codigo = basedatos.generar_codigo_empleado()
+            if nuevo_codigo:
+                codigo.set(nuevo_codigo)
+        #modo editar
+        elif tipo == "editar":
+            empleado = list(basedatos.ver_detalle_empleado(self.selec[0]))
+            empleado[5] = self.selec[4]
+
+            codigo.set(empleado[1])
+            nombres.set(empleado[2])
+            apellidos.set(empleado[3])
+            puesto.set(empleado[4])
+            area.set(empleado[5])
+            salario_hora.set(empleado[6])
+            telefono.set(empleado[10])
+            email.set(empleado[11])
+
+        #letrero de campos obligatorios
+        ctk.CTkLabel(master=frame_formulario, text="*Todos los campos son obligatorios").place(relx = 0.95, rely = 0.95, anchor = 'se')
+
+        #codigo
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Código',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 0, column = 0, sticky = 'w', pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=codigo,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS,
+                     state= "disabled"
+                     ).grid(row = 0, column = 1, sticky = 'nsew', pady = 12)
+        
+        #nombres
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Nombres',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 0, column = 2, sticky = 'w', padx= (12,0), pady = 12)
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=nombres,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 0, column = 3, sticky = 'nsew', pady = 12)
+        
+        #apellidos
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Apellidos',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 1, column = 0, sticky = 'w', pady = (0,12))
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=apellidos,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row=1, column=1, sticky = 'nsew', pady= (0,12))
+        
+        #puesto
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Puesto',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 1, column = 2, sticky = 'w', padx= (12,0), pady = (0,12))
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=puesto,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 1, column = 3, sticky = 'nsew', pady = (0,12))
+        
+        #area
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Área',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 2, column = 0, sticky = 'w',  pady = (0,12))
+        ctk.CTkComboBox(master=frame_formulario,
+                        variable=area,
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        button_color=GRIS_CLARO,
+                        button_hover_color=GRIS,
+                        dropdown_fg_color=CLARO,
+                        dropdown_hover_color=GRIS_CLARO,
+                        dropdown_text_color=OSCURO,
+                        dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        border_color=GRIS,
+                        border_width=1,
+                        values=basedatos.obtener_areas()
+                        ).grid(row = 2, column = 1, sticky = 'nsew', pady = (0,12))
+
+        #salario
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Salario/Hora',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 2, column = 2, sticky = 'w', pady = (0,12), padx= (12,0))
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=salario_hora,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row=2, column=3, sticky = 'nsew', pady= (0,12))
+        
+        #Telefono
+        ctk.CTkLabel(master=frame_formulario,
+                     text='Teléfono',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 3, column = 0, sticky = 'w', pady = (12,6))
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=telefono,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 3, column = 1, sticky = 'nsew', pady = (12,6))
+        
+        #email
+        ctk.CTkLabel(master=frame_formulario,
+                     text='E-mail',
+                     text_color=OSCURO,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+                     ).grid(row = 3, column = 2, sticky = 'w', padx= (12,0), pady = (12,6))
+        ctk.CTkEntry(master=frame_formulario,
+                     textvariable=email,
+                     text_color=OSCURO,
+                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_width=1,
+                     border_color=GRIS
+                     ).grid(row = 3, column = 3, sticky = 'nsew', pady = (12,6))
+
+        
+        def guardar():
+            #datos a guardar en formulario
+
+            datos = [
+                codigo.get().strip(), 
+                nombres.get().strip(),
+                apellidos.get().strip(),
+                puesto.get().strip(),
+                basedatos.ver_id_area(area.get().strip()),
+                salario_hora.get(),
+                telefono.get().strip(),
+                email.get().strip(),
+            ]
+
+            if any(elem is None for elem in datos):
+                messagebox.showerror("Error", "Por favor complete todos los campos obligatorios")
+                return
+            
+            fue_exitoso, mensaje = basedatos.guardar_empleado(tipo = tipo, datos = datos)
+
+            if not fue_exitoso:
+                messagebox.showerror("Error", mensaje)
+                return
+            messagebox.showinfo("Éxito", mensaje)
+            master.destroy()
+            self.tabla_personal([ENCABEZADO_PERSONAL] + [p for p in PERSONAL_ACTIVO()])
+
+        #boton cancelar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Cancelar',
+                      fg_color=PRIMARIO,
+                      hover_color=ROJO,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=master.destroy,
+                        ).grid(row = 6, column = 1, pady = 12)
+        
+        #boton guardar
+        ctk.CTkButton(master = frame_formulario,
+                      text='Guardar',
+                      fg_color=VERDE1,
+                      hover_color=VERDE2,
+                      text_color=BLANCO,
+                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                      corner_radius=10,
+                      command=guardar,
+                        ).grid(row = 6, column = 2, pady = 12)
 
     def ver_empleado(self, master):
         empleado = list(basedatos.ver_detalle_empleado(self.selec[0]))
@@ -2066,3 +2283,19 @@ class GestorLogistica(ctk.CTkFrame):
             else:
                 lado_izq = True
                 fila += 1
+
+    def inactivar_empleado(self):
+        if self.selec is None or self.selec[5] == 'INACTIVO':
+            messagebox.showerror('Error','Debe seleccionar un empleado activo')
+            return
+        
+        confirmacion = messagebox.askyesno("Advertencia", "Este empleado no podrá ser activado nuevamente. ¿Está seguro que desea desactivar a este empleado?")
+        if confirmacion:
+            exito, mensaje = basedatos.inactivar_empleado(self.selec[0])
+            if not exito:
+                messagebox.showerror('Error', mensaje)
+
+            messagebox.showinfo("Desactivación exitosa", "El empleado ha sido desactivado exitosamente")
+
+            #actualizar tabla
+            self.tabla_personal([ENCABEZADO_PERSONAL] + [p for p in PERSONAL_ACTIVO()])

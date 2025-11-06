@@ -1957,6 +1957,67 @@ def ver_detalle_empleado(codigo):
         finally:
             conn.close()
 
+def generar_codigo_empleado():
+    """
+    Genera el siguiente código de empleado en secuencia con formato EMPNNN.
+    Usa el mayor número actual extraído del sufijo numérico del campo 'codigo'.
+    """
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            # Extrae el máximo valor numérico del sufijo (asumiendo formato EMP###)
+            cursor.execute("SELECT MAX(CAST(substr(codigo,4) AS INTEGER)) FROM personal;")
+            row = cursor.fetchone()
+            max_num = row[0] if row and row[0] is not None else 0
+            siguiente = int(max_num) + 1
+            return f"EMP{siguiente:03d}"
+        except sql.Error as e:
+            print(f'Error generando codigo empleado: {e}')
+            return None
+        finally:
+            conn.close()
+
+def guardar_empleado(tipo, datos):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            if tipo == "agregar":
+                cursor.execute("""
+                    INSERT INTO personal
+                    (codigo, nombre, apellido, puesto, area_id, salario_hora, fecha_contratacion, telefono, email, estado)
+                    VALUES (?, ?, ?, ?, ?, ?, date('now'), ?, ?, 'Activo')
+                """, (datos))
+            else:
+                cursor.execute("""
+                    UPDATE personal
+                    SET codigo = ?, nombre = ?, apellido = ?, puesto = ?, area_id = ?, salario_hora = ?, telefono = ?, email = ?
+                    WHERE codigo = ?
+                """, (*datos[:8], datos[0]))
+            conn.commit()
+            return True, "Empleado guardado exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar empleado: {e}"
+        finally:
+            conn.close()
+
+def inactivar_empleado(codigo):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE personal
+                SET estado = 'Inactivo', fecha_inactivacion = date('now')
+                WHERE codigo = ?
+                """,(codigo,))
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
 
 def obtener_cotizaciones_eventos():
     conn = conectar_bd()
@@ -1965,7 +2026,7 @@ def obtener_cotizaciones_eventos():
         cursor.execute('SELECT * FROM eventos ORDER BY fecha DESC')
         return cursor.fetchall()
     return []
-
+    
 
 def obtener_columnas_eventos():
     """Return list of column names in eventos table in order."""
