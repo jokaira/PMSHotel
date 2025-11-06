@@ -260,11 +260,36 @@ def crear_tablas():
                 tarifa_salon REAL NOT NULL,
                 total REAL NOT NULL,
                 fecha_creacion DATETIME DEFAULT (datetime('now')),
-                notas TEXT
+                notas TEXT,
+                mesas_csv TEXT,
+                asientos_totales INTEGER DEFAULT 0,
+                costo_mesas REAL DEFAULT 0.0
             );
             """)
             conn.commit()
-            print('13. Tabla "eventos" creada exitosamente')
+            # Ensure older DBs get new columns (ALTER TABLE will fail silently if column exists)
+            try:
+                cursor.execute("ALTER TABLE eventos ADD COLUMN mesas_csv TEXT")
+            except sql.Error:
+                pass
+            try:
+                cursor.execute("ALTER TABLE eventos ADD COLUMN asientos_totales INTEGER DEFAULT 0")
+            except sql.Error:
+                pass
+            try:
+                cursor.execute("ALTER TABLE eventos ADD COLUMN costo_mesas REAL DEFAULT 0.0")
+            except sql.Error:
+                pass
+            try:
+                cursor.execute("ALTER TABLE eventos ADD COLUMN hora_inicio TEXT")
+            except sql.Error:
+                pass
+            try:
+                cursor.execute("ALTER TABLE eventos ADD COLUMN hora_fin TEXT")
+            except sql.Error:
+                pass
+            conn.commit()
+            print('13. Tabla "eventos" creada/actualizada exitosamente')
 
             #14. plan de housekeeping
             cursor.execute("""
@@ -1941,13 +1966,54 @@ def obtener_cotizaciones_eventos():
         return cursor.fetchall()
     return []
 
-def insertar_cotizacion_evento(tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas):
+
+def obtener_columnas_eventos():
+    """Return list of column names in eventos table in order."""
+    conn = conectar_bd()
+    cols = []
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("PRAGMA table_info(eventos)")
+            info = cursor.fetchall()
+            cols = [c[1] for c in info]
+        except sql.Error:
+            cols = []
+        finally:
+            conn.close()
+    return cols
+
+def insertar_cotizacion_evento(tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas, hora_inicio=None, hora_fin=None, mesas_csv=None, asientos_totales=0, costo_mesas=0.0):
     conn = conectar_bd()
     if conn:
         cursor = conn.cursor()
-        cursor.execute('''INSERT INTO eventos (tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas) 
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                       (tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas))
+        # Determine which columns actually exist in the 'eventos' table to avoid INSERT errors on older DBs
+        cursor.execute("PRAGMA table_info(eventos)")
+        cols_info = cursor.fetchall()
+        cols = [c[1] for c in cols_info]
+        # base columns we always expect
+        base_cols = ['tipo', 'salon', 'fecha', 'hora', 'equipamiento', 'categoria', 'personas', 'tarifa_salon', 'total', 'notas']
+        insert_cols = []
+        values = []
+        for c in base_cols:
+            if c in cols:
+                insert_cols.append(c)
+                values.append(locals()[c])
+        # optional columns
+        if 'hora_inicio' in cols:
+            insert_cols.append('hora_inicio'); values.append(hora_inicio)
+        if 'hora_fin' in cols:
+            insert_cols.append('hora_fin'); values.append(hora_fin)
+        if 'mesas_csv' in cols:
+            insert_cols.append('mesas_csv'); values.append(mesas_csv)
+        if 'asientos_totales' in cols:
+            insert_cols.append('asientos_totales'); values.append(asientos_totales)
+        if 'costo_mesas' in cols:
+            insert_cols.append('costo_mesas'); values.append(costo_mesas)
+
+        placeholders = ','.join(['?'] * len(insert_cols))
+        sql = f"INSERT INTO eventos ({','.join(insert_cols)}) VALUES ({placeholders})"
+        cursor.execute(sql, tuple(values))
         conn.commit()
         conn.close()
 
@@ -1959,14 +2025,35 @@ def eliminar_cotizacion_evento(id_):
         conn.commit()
         conn.close()
 
-def actualizar_cotizacion_evento(id_, tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas):
+def actualizar_cotizacion_evento(id_, tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas, hora_inicio=None, hora_fin=None, mesas_csv=None, asientos_totales=0, costo_mesas=0.0):
     conn = conectar_bd()
     if conn:
         cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE eventos
-            SET tipo = ?, salon = ?, fecha = ?, hora = ?, equipamiento = ?, categoria = ?, personas = ?, tarifa_salon = ?, total = ?, notas = ?
-            WHERE id = ?
-        ''', (tipo, salon, fecha, hora, equipamiento, categoria, personas, tarifa_salon, total, notas, id_))
+        # Determine which columns exist and build SET clause dynamically
+        cursor.execute("PRAGMA table_info(eventos)")
+        cols_info = cursor.fetchall()
+        cols = [c[1] for c in cols_info]
+        base_cols = ['tipo', 'salon', 'fecha', 'hora', 'equipamiento', 'categoria', 'personas', 'tarifa_salon', 'total', 'notas']
+        set_parts = []
+        values = []
+        for c in base_cols:
+            if c in cols:
+                set_parts.append(f"{c} = ?")
+                values.append(locals()[c])
+        if 'hora_inicio' in cols:
+            set_parts.append('hora_inicio = ?'); values.append(hora_inicio)
+        if 'hora_fin' in cols:
+            set_parts.append('hora_fin = ?'); values.append(hora_fin)
+        if 'mesas_csv' in cols:
+            set_parts.append('mesas_csv = ?'); values.append(mesas_csv)
+        if 'asientos_totales' in cols:
+            set_parts.append('asientos_totales = ?'); values.append(asientos_totales)
+        if 'costo_mesas' in cols:
+            set_parts.append('costo_mesas = ?'); values.append(costo_mesas)
+
+        set_clause = ', '.join(set_parts)
+        sql = f"UPDATE eventos SET {set_clause} WHERE id = ?"
+        values.append(id_)
+        cursor.execute(sql, tuple(values))
         conn.commit()
         conn.close()
