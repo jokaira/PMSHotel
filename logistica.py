@@ -13,6 +13,7 @@ class GestorLogistica(ctk.CTkFrame):
         self.hab_sucia = ctk.StringVar()
         self.personal_housekeeping = ctk.StringVar()
         self.busqueda_var = ctk.StringVar()
+        self.filtro_estado = ctk.StringVar(value='Activo')
 
         #pestañas
         self.contenedor_pestanas = ctk.CTkFrame(master=self, fg_color='transparent')
@@ -65,7 +66,7 @@ class GestorLogistica(ctk.CTkFrame):
                           text= 'Personal',
                           fg_color=GRIS_CLARO,
                           hover_color=GRIS,
-                          command= "",
+                          command= self.personal,
                           text_color=OSCURO,
                           font = (FUENTE,TAMANO_TEXTO_DEFAULT), 
                           height=44,
@@ -1750,3 +1751,318 @@ class GestorLogistica(ctk.CTkFrame):
                       corner_radius=10,
                       command=guardar,
                         ).grid(row = 6, column = 2, pady = 12)
+        
+    def personal(self):
+        for w in self.logistica.winfo_children():
+             w.destroy()
+        self.btn_personal.configure(fg_color = AZUL, hover_color = AZUL,text_color = BLANCO) 
+        self.btn_housekeeping.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+        self.btn_inventario.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+        self.btn_mantenimiento.configure(fg_color = GRIS_CLARO, hover_color = GRIS, text_color = OSCURO)
+        self.logistica.configure(border_width = 0)
+        self.selec = []
+
+        gestion_personal = ctk.CTkFrame(master=self.logistica,fg_color='transparent')
+        gestion_personal.pack(fill = 'x', anchor = 'n', pady = 8)
+
+        ctk.CTkLabel(master=gestion_personal, text='Gestor del Personal', text_color=OSCURO, font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')).pack(anchor = 'w', padx = 15, pady = (12,8))
+
+        self.barra = self.barra_buscar(master=gestion_personal)
+        
+        self.contenedor_tabla = ctk.CTkFrame(gestion_personal, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
+        self.contenedor_tabla.pack(fill='both', expand=True, padx = 12, pady = (0,8))
+
+        #personal
+        self.tabla_personal([ENCABEZADO_PERSONAL] + [p for p in PERSONAL_ACTIVO()])
+
+        btn_ver = Boton(
+            master=gestion_personal,
+            texto="Ver detalles",
+            metodo= lambda: self.modal_personal("ver")
+        )
+
+        btn_editar = Boton(
+            master=gestion_personal,
+            texto="Editar datos",
+            metodo= lambda: self.modal_personal("editar"),
+            color=MORADO,
+            hover="#A472B7"
+        )
+        #TODO: Agregar boton de desactivar empleado
+
+
+    def tabla_personal(self, data):
+        for w in self.contenedor_tabla.winfo_children():
+             w.destroy()
+
+        frame = ctk.CTkScrollableFrame(master=self.contenedor_tabla, fg_color='transparent')
+        frame.pack(fill = 'both', expand = True, padx = 12, pady = 12)
+
+        #resaltado segun estado
+        colores = {
+                    'Activo': VERDE1,
+                    'Inactivo': PRIMARIO
+                  }
+
+        self.celdas = []
+        for f, fila in enumerate(data):
+            fila_widgets = []
+            for c, texto in enumerate(fila):
+                  #coloreado de las lineas
+                  if f == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                  elif f % 2 == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+                  else:
+                    bg = GRIS_CLARO4
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+
+                  #resaltado de estado con "pilas"
+                  if texto in colores:
+                      cont_pila = ctk.CTkFrame(master=frame, fg_color=bg, corner_radius=0)
+                      cont_pila.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
+
+                      pila = ctk.CTkFrame(master=cont_pila, fg_color=colores[texto], corner_radius=15, height = 28)
+                      pila.pack(fill = 'y')
+
+                      lbl = ctk.CTkLabel(master=pila, text=texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
+                      lbl.pack(expand = True, padx = 8, pady = 2)
+                    
+                      if f > 0:
+                        lbl.bind("<Button-1>", lambda e, fila=f: self.selec_empleado(fila))
+
+                      widget_celda = (lbl, True)
+                  else:
+                    lbl = ctk.CTkLabel(frame, text=texto, anchor='center', width = 140, height = 28, fg_color=bg, text_color=fg, font=font)
+                    lbl.grid(row = f*2, column = c, sticky = 'nsew', padx = 1, pady = 1)
+
+                    if f > 0:
+                      lbl.bind("<Button-1>", lambda e, fila=f: self.selec_empleado(fila))
+                    widget_celda = (lbl, False)
+                  
+                  frame.grid_columnconfigure(c, weight=1)
+
+                  #borde encabezado
+                  if f == 0:
+                    borde = ctk.CTkFrame(master=frame, fg_color=GRIS)
+                    borde.grid(row=f*2+1, column = c, sticky = 'ew')
+                    borde.grid_propagate(False)
+                    borde.configure(height = 2)
+
+                  #bind capturando fila
+                  fila_widgets.append(widget_celda)
+            self.celdas.append(fila_widgets) 
+
+    def barra_buscar(self, master):
+        contenedor = ctk.CTkFrame(master=master, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=12, height=62)
+        contenedor.pack(fill = 'x')
+        contenedor.pack_propagate(False)
+
+        self.busqueda_var.set("")
+        self.filtro_estado.set("Activo")
+
+        ctk.CTkLabel(contenedor, 
+                     text='🔍 Buscar:',
+                     text_color=OSCURO,
+                     font=(FUENTE, 13, 'bold')
+                     ).pack(side = 'left', padx = 6)
+        
+        ctk.CTkEntry(contenedor,
+                     placeholder_text='Nombre, código o área...',
+                     placeholder_text_color=GRIS_CLARO2,
+                     corner_radius=8,
+                     text_color=OSCURO,
+                     textvariable=self.busqueda_var,
+                     font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                     border_color= GRIS_CLARO2,
+                     border_width=1, height=35
+                     ).pack(side = 'left', fill = 'x', expand = True, padx = 6)
+        
+        ctk.CTkLabel(contenedor, 
+                     text='Estado:',
+                     text_color=OSCURO,
+                     font=(FUENTE, 13, 'bold')
+                     ).pack(side = 'left', padx = 6)
+        
+        ctk.CTkComboBox(contenedor,
+                        values = ['Activo', 'Inactivo'],
+                        corner_radius=8,
+                        button_color=GRIS_CLARO,
+                        button_hover_color=GRIS,
+                        dropdown_fg_color=CLARO,
+                        dropdown_hover_color=GRIS_CLARO,
+                        dropdown_text_color=OSCURO,
+                        text_color=OSCURO,
+                        font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                        border_color= GRIS_CLARO2,
+                        border_width=1, height=35,
+                        variable=self.filtro_estado,
+                        ).pack(side = 'left', padx = 6)
+
+        btn_buscar = Boton (master=contenedor,
+                           texto = 'Buscar', 
+                           fill=None, 
+                           metodo= self.buscar,
+                           padx=(12,6))
+
+        btn_limpiar = Boton(master=contenedor,
+                            texto='Limpiar',
+                            color=PRIMARIO,
+                            hover=ROJO,
+                            padx=6,
+                            fill=None,
+                            metodo = self.limpiar_busqueda
+                            )
+
+        btn_agregar = Boton(master=contenedor,
+                            texto='➕ Agregar',
+                            color=VERDE1,
+                            hover=VERDE2,
+                            fill=None,
+                            padx=(6,12),
+                            metodo= lambda: self.modal_personal("nuevo")
+                            )
+        
+    def buscar(self):
+        busqueda = self.busqueda_var.get()
+        filtro_estado = self.filtro_estado.get().strip()
+        
+        #buscar habitaciones
+        resultado = basedatos.buscar_empleado(texto=busqueda, estado=filtro_estado)
+        data = [ENCABEZADO_PERSONAL] + resultado
+        self.tabla_personal(data = data)
+
+    def limpiar_busqueda(self):
+        self.busqueda_var.set('')
+        self.filtro_estado.set('Activo')
+        self.tabla_personal([ENCABEZADO_PERSONAL] + [p for p in PERSONAL_ACTIVO()])
+
+    def selec_empleado(self, fila):
+        if fila == 0:
+            return
+        valores = [w.cget('text') for w, _ in self.celdas[fila]]
+        self.selec = valores
+        print(self.selec)
+
+        #resaltado
+        for f, fila_widgets in enumerate(self.celdas):
+            for w, es_badge in fila_widgets:
+                if es_badge:
+                    continue
+    
+                if f == fila:
+                    w.configure(fg_color = AZUL_CLARO)
+                else:
+                    if f == 0:
+                        default_bg = 'transparent'
+                        default_text = OSCURO
+                    elif f % 2 == 0:
+                        default_bg = 'transparent'
+                        default_text = OSCURO
+                    else:
+                        default_bg = GRIS_CLARO4
+                        default_text = OSCURO
+
+                    w.configure(fg_color=default_bg, text_color=default_text)
+
+    def modal_personal(self, tipo):
+            titulo_ventana = ""
+            titulo_modal = ""
+
+            if tipo == 'ver' and len(self.selec) == 0:
+                messagebox.showerror("Error", "Debe primero seleccionar un ticket para ver los detalles")
+                return
+
+            match tipo:
+                case "nuevo":
+                    titulo_ventana = "Agregar nuevo empleado"
+                    titulo_modal = titulo_ventana
+                case 'ver':
+                    titulo_ventana = "Ver detalles del empleado"
+                    titulo_modal = "Detalles del empleado"
+
+            dialogo = ctk.CTkToplevel(self, fg_color=CLARO)
+            dialogo.title(titulo_modal)
+            dialogo.geometry("720x380")
+            dialogo.resizable(False,False)
+            dialogo.transient(self)
+            dialogo.grab_set()
+            
+            match tipo:
+                case "nuevo":
+                    self.agregar_empleado(master = dialogo)
+                case 'ver':
+                    self.ver_empleado(master=dialogo)
+                case 'editar':
+                    pass #TODO
+
+    def agregar_empleado(self, master):
+        pass #TODO
+
+    def ver_empleado(self, master):
+        empleado = list(basedatos.ver_detalle_empleado(self.selec[0]))
+
+        empleado[5] = self.selec[4]
+        empleado.pop(0)
+
+        descripcion = ['Código', 'Nombres', 'Apellidos', 'Puesto', 'Área', 'Salario/Hora ($)', 'Estado', 'Fecha de Ingreso', 'Fecha de Salida', 'Teléfono', 'Correo']
+
+        contenedor = ctk.CTkFrame(master=master, fg_color=GRIS_CLARO4)
+        contenedor.pack(fill = 'both', expand = True, padx = 16, pady = (0,10))
+        
+        contenedor.columnconfigure(index=(0,1,2,3), weight = 1, uniform= 'k')
+
+        fila = 0
+        lado_izq = True
+        
+        for desc, valor in zip(descripcion, empleado):
+            texto_valor = str(valor) if valor is not None else "No aplica"
+
+            # Campos que deben ocupar una fila completa
+            if desc in ['Descripción', 'Solución', 'Notas adicionales']:
+                label_desc = ctk.CTkLabel(
+                    contenedor, text=desc + ": ", text_color=OSCURO,
+                    font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                )
+                label_val = ctk.CTkLabel(
+                    contenedor, text=texto_valor, text_color=OSCURO,
+                    font=(FUENTE, TAMANO_TEXTO_DEFAULT),
+                    wraplength=600, justify="left"
+                )
+                label_desc.grid(row=fila, column=0, padx=(8, 2), pady=4, sticky="ne")
+                label_val.grid(row=fila, column=1, columnspan=3, padx=(2, 8), pady=4, sticky="w")
+
+                # Avanzar una fila y reiniciar el lado
+                fila += 1
+                lado_izq = True
+                continue
+
+            # Campos normales (dos por fila)
+            if lado_izq:
+                col_desc, col_val = 0, 1
+            else:
+                col_desc, col_val = 2, 3
+
+            label_desc = ctk.CTkLabel(
+                contenedor, text=desc + ": ", text_color=OSCURO,
+                font=(FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+            )
+            label_val = ctk.CTkLabel(
+                contenedor, text=texto_valor, text_color=OSCURO,
+                font=(FUENTE, TAMANO_TEXTO_DEFAULT)
+            )
+            label_desc.grid(row=fila, column=col_desc, padx=(8, 2), pady=4, sticky="e")
+            label_val.grid(row=fila, column=col_val, padx=(2, 8), pady=4, sticky="w")
+
+            # Alternar lado o avanzar fila si ya se llenaron las dos columnas
+            if lado_izq:
+                lado_izq = False
+            else:
+                lado_izq = True
+                fila += 1

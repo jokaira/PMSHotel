@@ -165,26 +165,6 @@ def crear_tablas():
             conn.commit()
             print('5. Tabla "personal" creada exitosamente')
 
-            #6. turnos
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS turnos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                id_personal INTEGER NOT NULL,
-                fecha_especifica DATE NOT NULL,
-                hora_inicio TEXT NOT NULL,
-                hora_fin TEXT NOT NULL,
-                area_id INTEGER NOT NULL,
-                activo BOOLEAN DEFAULT 1,
-                fecha_creacion DATETIME DEFAULT (datetime('now')),
-                tipo_asignacion TEXT DEFAULT 'individual',
-                informacion_adicional TEXT,
-                FOREIGN KEY (id_personal) REFERENCES personal(id),
-                FOREIGN KEY (area_id) REFERENCES areas(id)
-            );
-            """)
-            conn.commit()
-            print('6. Tabla "turnos" creada exitosamente')
-
             #8. tickets de mantenimiento
             cursor.execute("""
             CREATE TABLE tickets_mantenimiento (
@@ -451,18 +431,6 @@ def insertar_datos_muestra():
             ('103', 'Cliente anterior', 'clienteanterior@example.com', date('now', '-25 days'), date('now', '-24 days'), 1, 9, 1, 0, 'Finalizado', 'Walk-in del mes anterior');
             """)
 
-            # Insertar Turnos
-            cursor.execute("""
-            INSERT INTO turnos (id_personal, fecha_especifica, hora_inicio, hora_fin, area_id, tipo_asignacion) VALUES
-            (1, date('now'), '08:00', '16:00', (SELECT id FROM areas WHERE nombre='Housekeeping'), 'individual'),
-            (2, date('now'), '09:00', '17:00', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 'individual'),
-            (3, date('now'), '07:00', '15:00', (SELECT id FROM areas WHERE nombre='Front Desk'), 'individual'),
-            (4, date('now', '+1 day'), '09:00', '17:00', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 'individual'),
-            (5, date('now', '+1 day'), '08:00', '16:00', (SELECT id FROM areas WHERE nombre='Housekeeping'), 'individual'),
-            (1, date('now', '+2 days'), '08:00', '16:00', (SELECT id FROM areas WHERE nombre='Housekeeping'), 'individual'),
-            (2, date('now', '+2 days'), '09:00', '17:00', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 'individual');
-            """)
-
             # Insertar Tickets de Mantenimiento
             cursor.execute("""
             INSERT INTO tickets_mantenimiento 
@@ -559,7 +527,6 @@ def limpiar_datos():
             cursor.execute("DELETE FROM checkins_checkouts;")
             cursor.execute("DELETE FROM walk_ins;")
             cursor.execute("DELETE FROM tickets_mantenimiento;")
-            cursor.execute("DELETE FROM turnos;")
             cursor.execute("DELETE FROM housekeeping_plan;")
             cursor.execute("DELETE FROM personal;")
             cursor.execute("DELETE FROM reservas;")
@@ -583,8 +550,6 @@ def limpiar_datos():
             SELECT 'walk_ins', COUNT(*) FROM walk_ins
             UNION ALL
             SELECT 'tickets_mantenimiento', COUNT(*) FROM tickets_mantenimiento
-            UNION ALL
-            SELECT 'turnos', COUNT(*) FROM turnos
             UNION ALL
             SELECT 'housekeeping_plan', COUNT(*) FROM housekeeping_plan
             UNION ALL
@@ -1890,6 +1855,83 @@ def estado_ticket(estado, id, solucion = None, notas = None):
             return False, f"Error al guardar datos: {e}"
         finally:
             conn.close()
+
+def obtener_personal_activo():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT 
+                p.codigo,
+                p.nombre,
+                p.apellido,
+                p.puesto,
+                a.nombre AS area_id,   -- muestra el nombre del área en lugar del ID
+                p.estado,
+                p.fecha_contratacion
+            FROM personal p
+            LEFT JOIN areas a ON p.area_id = a.id
+            WHERE p.estado = 'Activo'
+            ORDER BY p.codigo;
+            """)
+            consulta = cursor.fetchall()
+            return consulta
+        except sql.Error as e:
+            print(f'Error al obtener empleados: {e}')
+        finally:
+            conn.close()
+
+def buscar_empleado(texto, estado): #el query de consulta para buscar
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT 
+                    p.codigo,
+                    p.nombre,
+                    p.apellido,
+                    p.puesto,
+                    a.nombre AS area_id,
+                    p.estado,
+                    p.fecha_contratacion
+                FROM personal p
+                LEFT JOIN areas a ON p.area_id = a.id
+                WHERE (? = 'Activo' OR p.estado = ?)
+                    AND (
+                        p.codigo LIKE ?
+                        OR p.nombre LIKE ?
+                        OR p.apellido LIKE ?
+                        OR p.puesto LIKE ?
+                        OR a.nombre LIKE ?
+                    )
+                ORDER BY p.codigo;
+            """, (estado, estado, f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%'))
+            
+            resultado = cursor.fetchall()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al buscar: {e}')
+        finally:
+            conn.close()
+
+def ver_detalle_empleado(codigo):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT * FROM personal
+            WHERE codigo = ?;
+            """, (codigo,))
+            resultado = cursor.fetchone()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener información: {e}')
+        finally:
+            conn.close()
+
 
 def obtener_cotizaciones_eventos():
     conn = conectar_bd()

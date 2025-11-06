@@ -150,3 +150,9 @@ def TRANS_INVENTARIO(): return basedatos.obtener_transacciones_inventario()
 ENCABEZADO_TICKETS_MANT = ['ID', 'Ubicación', 'Descripción', 'Estado', 'Prioridad', 'Técnico asignado']
 
 def TICKETS_MANTENIMIENTO(): return basedatos.obtener_tickets()
+
+ENCABEZADO_PERSONAL = ['Código', 'Nombres', 'Apellidos', 'Puesto', 'Área', 'Estado', 'Fecha de Ingreso']
+
+def PERSONAL_ACTIVO(): return basedatos.obtener_personal_activo()
+
+# def PERSONAL_INACTIVO(): return basedatos.obtener_personal_inactivo()
