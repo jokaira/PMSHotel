@@ -1,11 +1,12 @@
 import sqlite3 as sql
-from datetime import date
+from datetime import date, datetime, timedelta
 
 NOMBRE_BASEDATOS = 'base_datos.db'
 
 def conectar_bd():
     try:
-        conn = sql.connect(NOMBRE_BASEDATOS)
+        conn = sql.connect(NOMBRE_BASEDATOS, timeout=10)
+        conn.row_factory = sql.Row
         return conn
     except sql.Error as e:
         print(f'Error al conectarse a la base de datos: {e}')
@@ -132,6 +133,10 @@ def crear_tablas():
             );
             """)
             conn.commit()
+            try:
+                cursor.execute("ALTER TABLE reservas ADD COLUMN es_walkin INTEGER DEFAULT 0")
+            except sql.Error:
+                pass
             print('4. Tabla "reservas" creada exitosamente')
 
             #4.5. areas
@@ -338,7 +343,20 @@ def crear_tablas():
             """)
             conn.commit()
             print('16. Tabla "transacciones_inventario" creada exitosamente')
-
+                       
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS pagos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_reserva INTEGER,
+                monto_local REAL,
+                moneda TEXT,
+                tasa REAL,
+                monto_equivalente REAL,
+                fecha TEXT
+            );
+            """)
+            conn.commit()
+            cursor.execute("ALTER TABLE pagos ADD COLUMN fuente_tasa TEXT DEFAULT 'Manual'")
             conn.close()
             print('Todas las tablas creadas exitosamente')
         except sql.Error as e:
@@ -602,6 +620,12 @@ def limpiar_datos():
             print(f'Error al eliminar datos: {e}')
         finally:
             conn.close()
+
+def validar_fecha(fecha_str):
+    try:
+        return datetime.strptime(fecha_str, '%Y-%m-%d').date()
+    except Exception:
+        return None
 
 def kpi_alojamiento(): #retorna la cantidad de habitaciones ocupadas y la cantidad de personas alojadas en el día de hoy
     conn = conectar_bd()
@@ -2118,3 +2142,277 @@ def actualizar_cotizacion_evento(id_, tipo, salon, fecha, hora, equipamiento, ca
         cursor.execute(sql, tuple(values))
         conn.commit()
         conn.close()
+
+def obtener_dashboard_frontdesk():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        hoy = date.today().isoformat()
+        try:
+            cursor.execute("SELECT COUNT(*) FROM checkins_checkouts WHERE tipo='checkin' AND date(fecha_hora) = ?", (hoy,))
+            checkins = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM checkins_checkouts WHERE tipo='checkout' AND date(fecha_hora) = ?", (hoy,))
+            checkouts = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM habitaciones WHERE estado='Ocupada'")
+            ocupadas = cursor.fetchone()[0]
+            cursor.execute("SELECT SUM(monto) FROM ingresos WHERE date(fecha_pago) = ?", (hoy,))
+            ingresos = cursor.fetchone()[0] or 0.0
+        finally:
+            conn.close()
+        return checkins, checkouts, ocupadas, ingresos
+    return 0, 0, 0, 0.0 # Default values if conn is None
+
+
+
+def buscar_reserva_frontdesk(query):
+    conn = conectar_bd()
+    if not conn:
+        return []
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT r.id, c.nombres || ' ' || c.apellidos as cliente_nombre, r.numero_hab,
+                   r.fecha_entrada, r.fecha_salida, r.monto_pago, r.estado
+            FROM reservas r
+            JOIN clientes c ON r.id_cliente = c.id
+            WHERE (r.id LIKE ? OR c.nombres LIKE ? OR c.apellidos LIKE ? OR r.numero_hab LIKE ?)
+            AND r.estado = 'Pendiente'
+        """, (f'%{query}%', f'%{query}%', f'%{query}%', f'%{query}%'))
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+def registrar_checkin(reserva_id):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT numero_hab FROM reservas WHERE id=?", (reserva_id,))
+        hab = cur.fetchone()
+        if not hab:
+            raise Exception("Reserva no encontrada")
+        numero_hab = hab['numero_hab']
+
+        cur.execute("UPDATE reservas SET estado='checked-in', checked_in=1 WHERE id=?", (reserva_id,))
+        cur.execute("UPDATE habitaciones SET estado='Ocupada' WHERE numero=?", (numero_hab,))
+        cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo) VALUES (?, 'checkin')", (reserva_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+def registrar_early_checkin(reserva_id, monto_cargo):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("BEGIN")
+        registrar_checkin(reserva_id)
+        cur.execute("""
+            INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago, notas)
+            VALUES (?, ?, ?, ?, ?)
+        """, ('costo_adicional_checkout', 'Early Check-in', monto_cargo, 'efectivo', f'Reserva ID: {reserva_id}'))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def buscar_habitaciones_disponibles(fecha_entrada, fecha_salida, tipo_hab):
+    conn = conectar_bd()
+    if not conn:
+        return []
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT h.numero, t.nombre as tipo_nombre, t.precio_base
+            FROM habitaciones h
+            JOIN tipos_habitacion t ON h.tipo_id = t.id
+            WHERE t.nombre = ? AND h.estado = 'Disponible' AND h.numero NOT IN (
+                SELECT numero_hab FROM reservas
+                WHERE fecha_salida > ? AND fecha_entrada < ? AND estado != 'Cancelada'
+            )
+        """, (tipo_hab, fecha_entrada, fecha_salida))
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def registrar_walkin(nombre, email, f_entrada, f_salida, personas, monto, num_hab):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("BEGIN")
+        # Buscar cliente por email
+        cur.execute("SELECT id FROM clientes WHERE email = ?", (email,))
+        row = cur.fetchone()
+        if row:
+            id_cliente = row['id']
+        else:
+            # Crear cliente genérico
+            cur.execute("""
+                INSERT INTO clientes (nombres, apellidos, tipo_doc, numero_doc, fecha_nac, genero, nacionalidad, telefono, email)
+                VALUES (?, '', 'Otro', '', date('now'), '', '', '', ?)
+            """, (nombre, email))
+            id_cliente = cur.lastrowid
+
+        # Registrar el ingreso
+        cur.execute("INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago) VALUES (?,?,?,?)",
+                    ('walk_in', f'Walk-in Hab {num_hab}', monto, 'efectivo'))
+        pago_id = cur.lastrowid
+
+        # Insertar en reservas
+        cur.execute("""
+            INSERT INTO reservas (
+                numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email,
+                fecha_entrada, fecha_salida, total_personas, id_pago, monto_pago,
+                checked_in, checked_out, estado, es_walkin
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 'En curso', 1)
+        """, (
+            num_hab, 'Walk-in', id_cliente, nombre, email,
+            f_entrada, f_salida, personas, pago_id, monto
+        ))
+        reserva_id = cur.lastrowid
+
+        # Actualizar estado de la habitación
+        cur.execute("UPDATE habitaciones SET estado='Ocupada' WHERE numero=?", (num_hab,))
+        # Registrar el check-in
+        cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo) VALUES (?, 'checkin')", (reserva_id,))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+def agregar_cargo_checkout(reserva_id, concepto, descripcion, monto):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago, notas)
+            VALUES (?, ?, ?, ?, ?)
+        """, ('costo_adicional_checkout', concepto, monto, 'efectivo', f'Reserva ID: {reserva_id} - {descripcion}'))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def extender_estadia(reserva_id, nueva_salida):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT fecha_salida, monto_pago, numero_hab FROM reservas WHERE id=?", (reserva_id,))
+        res = cur.fetchone()
+        if not res:
+            raise Exception("Reserva no encontrada para extender.")
+
+        fecha_salida_actual = validar_fecha(res['fecha_salida'])
+        fecha_nueva_salida = validar_fecha(nueva_salida)
+
+        if not fecha_salida_actual or not fecha_nueva_salida:
+            raise Exception("Fechas inválidas para calcular la extensión.")
+
+        dias_actuales = (fecha_salida_actual - date.today()).days
+        dias_nuevos = (fecha_nueva_salida - fecha_salida_actual).days
+        
+        if dias_nuevos <= 0:
+            raise Exception("La nueva fecha de salida debe ser posterior a la actual.")
+
+        precio_noche = res['monto_pago'] / dias_actuales if dias_actuales > 0 else 50
+        monto_adicional = dias_nuevos * precio_noche
+        cur.execute("UPDATE reservas SET fecha_salida=?, monto_pago=monto_pago+? WHERE id=?", (nueva_salida, monto_adicional, reserva_id))
+        agregar_cargo_checkout(reserva_id, "Extensión de estadía", f"{dias_nuevos} noches adicionales", monto_adicional)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def registrar_checkout(reserva_id):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT numero_hab FROM reservas WHERE id=?", (reserva_id,))
+        hab = cur.fetchone()
+        if not hab:
+            raise Exception("Reserva no encontrada")
+        numero_hab = hab['numero_hab']
+        cur.execute("UPDATE reservas SET estado='Completada', checked_out=1 WHERE id=?", (reserva_id,))
+        cur.execute("UPDATE habitaciones SET estado='Sucia' WHERE numero=?", (numero_hab,))
+        cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo) VALUES (?, 'checkout')", (reserva_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def registrar_late_checkout(reserva_id, monto_cargo):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("BEGIN")
+        agregar_cargo_checkout(reserva_id, "Late Check-Out", "Cargo por salida tardía", monto_cargo)
+        # No se hace el checkout aquí, solo se agrega el cargo. El checkout se confirma por separado.
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def obtener_total_deuda(reserva_id):
+    conn = conectar_bd()
+    if not conn:
+        return 0.0
+    cur = conn.cursor()
+    total_deuda = 0.0
+    try:
+        # Obtener el monto original de la reserva
+        cur.execute("SELECT monto_pago FROM reservas WHERE id=?", (reserva_id,))
+        res = cur.fetchone()
+        if res and res['monto_pago']:
+            total_deuda += float(res['monto_pago'])
+
+        # Sumar todos los cargos adicionales
+        cur.execute("SELECT SUM(monto) FROM ingresos WHERE tipo_ingreso='costo_adicional_checkout' AND notas LIKE ?", (f'%Reserva ID: {reserva_id}%',))
+        cargos = cur.fetchone()
+        if cargos and cargos[0]:
+            total_deuda += float(cargos[0])
+            
+    except Exception as e:
+        print(f"Error al calcular la deuda total: {e}")
+    finally:
+        conn.close()
+    return total_deuda
+
+def registrar_early_checkout(reserva_id):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT numero_hab FROM reservas WHERE id=?", (reserva_id,))
+        hab = cur.fetchone()
+        if not hab:
+            raise Exception("Reserva no encontrada")
+        numero_hab = hab['numero_hab']
+        cur.execute("UPDATE reservas SET estado='Completada', checked_out=1 WHERE id=?", (reserva_id,))
+        cur.execute("UPDATE habitaciones SET estado='Sucia' WHERE numero=?", (numero_hab,))
+        cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo) VALUES (?, 'checkout_anticipado')", (reserva_id,))
+        conn.commit()
+    finally:
+        conn.close()
+

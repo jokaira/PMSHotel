@@ -134,6 +134,37 @@ ENCABEZADOS_RESERVAS = ['ID', '🏠 Hab.', '👤 Cliente', '📧 Email', '📅 E
 
 def RESERVAS(): return basedatos.obtener_reservas()
 
+def KPI_FRONTDESK():
+    checkins, checkouts, ocupadas, ingresos = basedatos.obtener_dashboard_frontdesk()
+    return {
+        'checkins_hoy': {'titulo': '✅ Check-ins Hoy',
+                         'cantidad': checkins,
+                         'subtitulo': 'Registrados',
+                         'color': VERDE2,
+                         'col': 0},
+        'checkouts_hoy': {'titulo': '📤 Check-outs Hoy',
+                          'cantidad': checkouts,
+                          'subtitulo': 'Registrados',
+                          'color': ROJO,
+                          'col': 1},
+        'habitaciones_ocupadas': {'titulo': '🏠 Habitaciones Ocupadas',
+                                  'cantidad': ocupadas,
+                                  'subtitulo': 'Actualmente',
+                                  'color': AZUL,
+                                  'col': 2},
+        'ingresos_hoy': {'titulo': '💰 Ingresos Hoy',
+                         'cantidad': f'${ingresos:,.2f}',
+                         'subtitulo': 'Registrados',
+                         'color': MAMEY,
+                         'col': 3},
+    }
+
+#Clientes
+def CLIENTES(): return basedatos.obtener_clientes()
+
+ENCABEZADOS_CLIENTES = ["ID", "Nombres", "Apellidos", "Documento", "Nro. Doc","Cumpleaños", "Género", "Nacionalidad", "Teléfono", "E-mail"]
+
+
 #Logística
 def KPI_HOUSEKEEPING(): return {
     'sucias': {'titulo': 'Habitaciones Sucias', 
@@ -175,3 +206,6 @@ ENCABEZADO_PERSONAL = ['Código', 'Nombres', 'Apellidos', 'Puesto', 'Área', 'Es
 def PERSONAL_ACTIVO(): return basedatos.obtener_personal_activo()
 
 # def PERSONAL_INACTIVO(): return basedatos.obtener_personal_inactivo()
+
+# Frontdesk
+EARLY_CHECKOUT_PENALTY_PERCENT = 20
