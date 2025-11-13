@@ -1047,7 +1047,7 @@ class GestorReservas(ctk.CTkFrame):
         self.contenedor_tabla.pack(fill='both', expand=True, padx = 12, pady = 12)
 
         reservas = RESERVAS()
-        data_tabla = [ENCABEZADOS_RESERVAS] + [r for r in reservas if r[8] in ('Pendiente', 'En curso')]
+        data_tabla = [ENCABEZADOS_RESERVAS] + [r for r in reservas if r[8] in ('Pendiente', 'En curso', 'checked-in')]
         self.tabla_reservas(data=data_tabla)
 
         btn_frame = ctk.CTkFrame(self.contenedor_tabla, fg_color="transparent")
@@ -1223,6 +1223,7 @@ class GestorReservas(ctk.CTkFrame):
                     'En curso': AZUL, 
                     'Pendiente': MAMEY, 
                     'Cancelada': ROJO,
+                    'checked-in': AZUL
                   }
 
         self.celdas = []
@@ -1263,7 +1264,7 @@ class GestorReservas(ctk.CTkFrame):
                       pila = ctk.CTkFrame(master=cont_pila, fg_color=colores[texto], corner_radius=15, height = 28)
                       pila.pack(fill = 'y')
 
-                      lbl = ctk.CTkLabel(master=pila, text=texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
+                      lbl = ctk.CTkLabel(master=pila, text='EN CURSO' if texto == 'checked-in' else texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
                       lbl.pack(expand = True, padx = 8, pady = 2)
 
                       if f > 0:

@@ -380,14 +380,14 @@ def insertar_datos_muestra():
             # Insertar Clientes
             cursor.execute("""
             INSERT INTO clientes (nombres, apellidos, tipo_doc, numero_doc, fecha_nac, genero, nacionalidad, telefono, email) VALUES
-            ('María', 'Pérez', 'Cédula', '001-1234567-8', '1995-02-01', 'Femenino', 'Dominicana', '809-555-0000', 'maria@example.com'),
-            ('Juan', 'Gómez', 'Pasaporte', 'P123456', '1990-11-10', 'Masculino', 'Argentina', '11-5555-5555', 'juan@example.com'),
-            ('Ana', 'Rodríguez', 'Cédula', '001-2345678-9', '1988-07-15', 'Femenino', 'Dominicana', '809-555-1111', 'ana@example.com'),
-            ('Carlos', 'López', 'Cédula', '001-3456789-0', '1992-03-20', 'Masculino', 'Dominicana', '809-555-2222', 'carlos@example.com'),
-            ('Sofia', 'Martínez', 'Pasaporte', 'P789012', '1993-09-12', 'Femenino', 'Español', '34-666-777-888', 'sofia@example.com'),
-            ('Roberto', 'Fernández', 'Cédula', '001-4567890-1', '1985-12-05', 'Masculino', 'Dominicana', '809-555-3333', 'roberto@example.com'),
-            ('Carmen', 'García', 'Cédula', '001-5678901-2', '1991-06-18', 'Femenino', 'Dominicana', '809-555-4444', 'carmen@example.com'),
-            ('Miguel', 'Santos', 'Cédula', '001-6789012-3', '1987-04-25', 'Masculino', 'Dominicana', '809-555-5555', 'miguel@example.com');
+            ('María', 'Pérez', 'Cédula', '001-1234567-8', '1995-02-01', 'Femenino', 'Dominicana', '809-555-0000', 'maria@email.com'),
+            ('Juan', 'Gómez', 'Pasaporte', 'P123456', '1990-11-10', 'Masculino', 'Argentina', '11-5555-5555', 'juan@email.com'),
+            ('Ana', 'Rodríguez', 'Cédula', '001-2345678-9', '1988-07-15', 'Femenino', 'Dominicana', '809-555-1111', 'ana@email.com'),
+            ('Carlos', 'López', 'Cédula', '001-3456789-0', '1992-03-20', 'Masculino', 'Dominicana', '809-555-2222', 'carlos@email.com'),
+            ('Sofia', 'Martínez', 'Pasaporte', 'P789012', '1993-09-12', 'Femenino', 'Español', '34-666-777-888', 'sofia@email.com'),
+            ('Roberto', 'Fernández', 'Cédula', '001-4567890-1', '1985-12-05', 'Masculino', 'Dominicana', '809-555-3333', 'roberto@email.com'),
+            ('Carmen', 'García', 'Cédula', '001-5678901-2', '1991-06-18', 'Femenino', 'Dominicana', '809-555-4444', 'carmen@email.com'),
+            ('Miguel', 'Santos', 'Cédula', '001-6789012-3', '1987-04-25', 'Masculino', 'Dominicana', '809-555-5555', 'miguel@email.com');
             """)
 
             # Insertar Habitaciones
@@ -451,17 +451,17 @@ def insertar_datos_muestra():
                 fecha_entrada, fecha_salida, id_pago, monto_pago,
                 checked_in, checked_out, estado, notas
             ) VALUES
-            ('101', 'Doble', 1, 'María Pérez', 'maria@example.com', date('now'), date('now', '+2 days'), 1, 160.00, 1, 0, 'En curso', ''),
-            ('102', 'Individual', 2, 'Juan Gómez', 'juan@example.com', date('now'), date('now', '+1 day'), 2, 50.00, 1, 0, 'En curso', ''),
-            ('203', 'Suite', 6, 'Roberto Fernández', 'roberto@example.com', date('now', '-1 day'), date('now', '+1 day'), 3, 300.00, 1, 0, 'En curso', ''),
-            ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@example.com', date('now', '+1 day'), date('now', '+3 days'), 11, 300.00, 0, 0, 'Pendiente', ''),
-            ('301', 'Doble', 4, 'Carlos López', 'carlos@example.com', date('now', '+2 days'), date('now', '+4 days'), 12, 160.00, 0, 0, 'Pendiente', ''),
-            ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@example.com', date('now', '+5 days'), date('now', '+7 days'), 13, 600.00, 0, 0, 'Pendiente', ''),
-            ('103', 'Individual', 7, 'Carmen García', 'carmen@example.com', date('now', '+10 days'), date('now', '+12 days'), 14, 100.00, 0, 0, 'Pendiente', ''),
-            ('101', 'Doble', 8, 'Luis Pérez', 'luis@example.com', date('now', '-7 days'), date('now', '-5 days'), 15, 160.00, 1, 1, 'Completada', 'Estancia finalizada sin incidencias'),
-            ('203', 'Suite', 9, 'Elena Torres', 'elena@example.com', date('now', '-12 days'), date('now', '-10 days'), 16, 300.00, 1, 1, 'Completada', ''),
-            ('102', 'Individual', 10, 'Mario Díaz', 'mario@example.com', date('now', '-3 days'), date('now', '-1 day'), 17, 50.00, 0, 0, 'Cancelada', 'Cancelada por el cliente'),
-            ('301', 'Doble', 11, 'Ana Ruiz', 'ana.ruiz@example.com', date('now', '+4 days'), date('now', '+6 days'), 18, 160.00, 0, 0, 'Cancelada', 'Cancelada por no show');
+            ('101', 'Doble', 1, 'María Pérez', 'maria@email.com', date('now'), date('now', '+2 days'), 1, 160.00, 1, 0, 'En curso', ''),
+            ('102', 'Individual', 2, 'Juan Gómez', 'juan@email.com', date('now'), date('now', '+1 day'), 2, 50.00, 1, 0, 'En curso', ''),
+            ('203', 'Suite', 6, 'Roberto Fernández', 'roberto@email.com', date('now', '-1 day'), date('now', '+1 day'), 3, 300.00, 1, 0, 'En curso', ''),
+            ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@email.com', date('now', '+1 day'), date('now', '+3 days'), 11, 300.00, 0, 0, 'Pendiente', ''),
+            ('301', 'Doble', 4, 'Carlos López', 'carlos@email.com', date('now', '+2 days'), date('now', '+4 days'), 12, 160.00, 0, 0, 'Pendiente', ''),
+            ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@email.com', date('now', '+5 days'), date('now', '+7 days'), 13, 600.00, 0, 0, 'Pendiente', ''),
+            ('103', 'Individual', 7, 'Carmen García', 'carmen@email.com', date('now', '+10 days'), date('now', '+12 days'), 14, 100.00, 0, 0, 'Pendiente', ''),
+            ('101', 'Doble', 8, 'Luis Pérez', 'luis@email.com', date('now', '-7 days'), date('now', '-5 days'), 15, 160.00, 1, 1, 'Completada', 'Estancia finalizada sin incidencias'),
+            ('203', 'Suite', 9, 'Elena Torres', 'elena@email.com', date('now', '-12 days'), date('now', '-10 days'), 16, 300.00, 1, 1, 'Completada', ''),
+            ('102', 'Individual', 10, 'Mario Díaz', 'mario@email.com', date('now', '-3 days'), date('now', '-1 day'), 17, 50.00, 0, 0, 'Cancelada', 'Cancelada por el cliente'),
+            ('301', 'Doble', 11, 'Ana Ruiz', 'ana.ruiz@email.com', date('now', '+4 days'), date('now', '+6 days'), 18, 160.00, 0, 0, 'Cancelada', 'Cancelada por no show');
             """)
 
             # Insertar Walk-ins
@@ -470,8 +470,8 @@ def insertar_datos_muestra():
                 numero_hab, cliente_nombre, cliente_email, fecha_entrada, fecha_salida,
                 total_personas, id_pago, checked_in, checked_out, estado, notas
             ) VALUES
-            ('302', 'Pedro Ramírez', 'pedro@example.com', date('now'), date('now', '+1 day'), 2, 4, 1, 0, 'En curso', 'Walk-in de ejemplo'),
-            ('103', 'Cliente anterior', 'clienteanterior@example.com', date('now', '-25 days'), date('now', '-24 days'), 1, 9, 1, 0, 'Finalizado', 'Walk-in del mes anterior');
+            ('302', 'Pedro Ramírez', 'pedro@email.com', date('now'), date('now', '+1 day'), 2, 4, 1, 0, 'En curso', 'Walk-in de ejemplo'),
+            ('103', 'Cliente anterior', 'clienteanterior@email.com', date('now', '-25 days'), date('now', '-24 days'), 1, 9, 1, 0, 'Finalizado', 'Walk-in del mes anterior');
             """)
 
             # Insertar Tickets de Mantenimiento
