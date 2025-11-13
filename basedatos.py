@@ -1194,7 +1194,7 @@ def guardar_reserva(tipo, datos, clave = None):
             if tipo == "agregar": #agregar reserva
                 cursor.execute("""
                 INSERT INTO reservas(numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email, fecha_entrada, fecha_salida, total_personas,id_pago, monto_pago, notas)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (datos))
             else: #editar reserva. las reservas no se editan
                 # cursor.execute("""

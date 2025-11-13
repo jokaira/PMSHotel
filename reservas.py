@@ -751,6 +751,9 @@ class GestorReservas(ctk.CTkFrame):
                 self.notas.get().strip()
             ]
 
+            print("DEBUG datos_reserva len:", len(datos_reserva))
+            print("DEBUG datos_reserva:", datos_reserva)
+
             reserva_guardada, mensaje_reserva = basedatos.guardar_reserva(tipo="agregar",datos=datos_reserva)
 
             if not reserva_guardada:
