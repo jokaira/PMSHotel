@@ -961,6 +961,7 @@ def buscar_habitacion(texto, estado): #el query de consulta para buscar
     if conn:
         cursor = conn.cursor()
         try:
+            patron = f"%{texto}%" if texto else "%"
             cursor.execute("""
                 SELECT 
                     h.id as "ID",
@@ -975,13 +976,13 @@ def buscar_habitacion(texto, estado): #el query de consulta para buscar
                 WHERE 
                     (? = 'Todos' OR h.estado = ?)
                     AND (
-                        h.numero LIKE ? 
-                        OR th.nombre LIKE ? 
-                        OR h.ubicacion LIKE ? 
-                        OR h.notas LIKE ?
+                        COALESCE(h.numero, '') LIKE ?
+                        OR COALESCE(th.nombre, '') LIKE ?
+                        OR COALESCE(h.ubicacion, '') LIKE ?
+                        OR COALESCE(h.notas, '') LIKE ?
                     )
                 ORDER BY h.numero;
-            """, (estado, estado, f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%'))
+            """, (estado, estado, patron, patron, patron, patron))
             
             resultado = cursor.fetchall()
             return resultado

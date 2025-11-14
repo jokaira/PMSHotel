@@ -237,9 +237,6 @@ class GestorHabitaciones(ctk.CTkFrame):
     def buscar(self):
         busqueda = self.busqueda_var.get().strip()
         filtro_estado = self.filtro_estado.get().strip()
-        if not busqueda:
-            self.tabla_habitaciones([ENCABEZADOS_HABITACIONES] + [h for h in HABITACIONES()])
-            return
         
         #buscar habitaciones
         resultado = basedatos.buscar_habitacion(busqueda, estado=filtro_estado)
