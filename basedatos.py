@@ -1742,6 +1742,19 @@ def eliminar_cotizacion_buffet(id_):
         conn.commit()
         conn.close()
 
+def actualizar_cotizacion_buffet(id_, fecha, personas, menu, precio, total, notas):
+    """Actualizar una cotización de buffet existente por id."""
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE buffet
+            SET fecha = ?, personas = ?, menu = ?, precio_por_persona = ?, total = ?, notas = ?
+            WHERE id = ?
+        ''', (fecha, personas, menu, precio, total, notas, id_))
+        conn.commit()
+        conn.close()
+
 def obtener_tickets():
     conn = conectar_bd()
     if conn:
