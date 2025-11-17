@@ -1111,64 +1111,127 @@ def guardar_tipo_habitacion(tipo, datos, clave):
         finally:
             conn.close()
 
-def hab_disponibles(fecha_entrada, fecha_salida, tipo = "Todos", capacidad_minima = None):
-    query = """
-            SELECT h.*
-            FROM habitaciones h
-            WHERE h.estado = 'Disponible'
-            AND h.numero NOT IN (
-                SELECT r.numero_hab
-                FROM reservas r
-                WHERE r.estado != 'Cancelada'
-                AND r.fecha_entrada < :fecha_salida
-                AND r.fecha_salida > :fecha_entrada
-            )
-            -- Caso especial: si la fecha de entrada es hoy, excluir habitaciones con check-in activo
-            AND (:fecha_entrada != DATE('now')
-                OR h.numero NOT IN (
-                    SELECT r.numero_hab
-                    FROM reservas r
-                    WHERE r.checked_in = 1 AND r.checked_out = 0
-                )
-            );
-            """
-    
-    query2 = """
-            SELECT nombre FROM tipos_habitacion
-            WHERE id = ?
-            """
-    
+def hab_disponibles(fecha_entrada, fecha_salida, tipo="Todos", capacidad_minima=None):
+    """
+    Retorna habitaciones disponibles entre fechas (acepta 'YYYY-MM-DD' o 'DD-MM-YYYY').
+    - Normaliza fechas de entrada a ISO.
+    - Convierte en la BD filas con formato DD-MM-YYYY a YYYY-MM-DD.
+    - Considera bloqueantes cualquier reserva/walk_in cuyo estado NO sea 'Cancelada' ni 'Completada'.
+    """
+    def _to_iso(f):
+        if not f:
+            return None
+        if isinstance(f, (date, datetime)):
+            return f.date().isoformat() if isinstance(f, datetime) else f.isoformat()
+        for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(f, fmt).date().isoformat()
+            except Exception:
+                pass
+        return None
+
+    fe_ini = _to_iso(fecha_entrada)
+    fe_fin = _to_iso(fecha_salida)
+    if not fe_ini or not fe_fin:
+        print("hab_disponibles: formato de fecha inválido:", fecha_entrada, fecha_salida)
+        return []
+
     conn = conectar_bd()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute(query, {"fecha_entrada": fecha_entrada, "fecha_salida": fecha_salida})
-            habitaciones = cursor.fetchall()
-            resultado = []
-            for habitacion in habitaciones:
-                datos_hab = []
-                datos_hab.append(habitacion[1])
-                cursor.execute(query2, (habitacion[2],))
-                tipo_hab = cursor.fetchone()[0]
-                datos_hab.append(tipo_hab)
-                datos_hab.append(habitacion[4])
-                datos_hab.append(habitacion[5])
+    if not conn:
+        return []
+    cursor = conn.cursor()
+    try:
+        # Normalizar fechas almacenadas en DD-MM-YYYY -> YYYY-MM-DD para reservas y walk_ins
+        updates = [
+            ("reservas", "fecha_entrada"),
+            ("reservas", "fecha_salida"),
+            ("walk_ins", "fecha_entrada"),
+            ("walk_ins", "fecha_salida"),
+        ]
+        total_converted = 0
+        for table, col in updates:
+            sql_upd = f"""
+                UPDATE {table}
+                SET {col} = substr({col},7,4) || '-' || substr({col},4,2) || '-' || substr({col},1,2)
+                WHERE {col} IS NOT NULL
+                  AND length({col}) = 10
+                  AND substr({col},3,1) = '-'
+                  AND substr({col},6,1) = '-'
+                  AND substr({col},5,1) != '-'
+            """
+            cursor.execute(sql_upd)
+            total_converted += cursor.rowcount
+        if total_converted:
+            conn.commit()
+            print(f"hab_disponibles: convertidas {total_converted} fechas de formato DD-MM-YYYY a ISO")
 
-                resultado.append(datos_hab)
-            if tipo != "Todos":
-                resultado = [habitacion for habitacion in resultado if habitacion[1] == tipo]
-            if capacidad_minima is not None:
-                resultado = [habitacion for habitacion in resultado if habitacion[3] >= capacidad_minima]
+        # Consulta: cualquier reserva/walk_in que se solape y cuyo estado NO sea 'Cancelada' ni 'Completada' bloquea la habitación
+        query = """
+            SELECT 
+                h.numero,
+                th.nombre AS tipo,
+                h.ubicacion,
+                h.capacidad,
+                h.estado
+            FROM habitaciones h
+            JOIN tipos_habitacion th ON h.tipo_id = th.id
+            WHERE 
+                -- No existe reserva no-cancelada/no-completada que se solape con el rango
+                NOT EXISTS (
+                    SELECT 1 FROM reservas r
+                    WHERE r.numero_hab = h.numero
+                      AND date(r.fecha_entrada) < date(:fecha_salida)
+                      AND date(r.fecha_salida)  > date(:fecha_entrada)
+                      AND r.estado NOT IN ('Cancelada','Completada')
+                )
+                -- No existe walk_in no-cancelado/no-completado que se solape con el rango
+                AND NOT EXISTS (
+                    SELECT 1 FROM walk_ins w
+                    WHERE w.numero_hab = h.numero
+                      AND date(w.fecha_entrada) < date(:fecha_salida)
+                      AND date(w.fecha_salida)  > date(:fecha_entrada)
+                      AND w.estado NOT IN ('Cancelada','Completada')
+                )
+            ORDER BY h.numero;
+        """
 
-            return resultado #retorna una lista con los siguientes datos:
-            #0: el numero de la habitacion
-            #1: el tipo de habitación
-            #2: la ubicacion de la habitacion
-            #3: la capacidad de la habitacion
-        except sql.Error as e:
-            print(f'Error al obtener habitaciones: {e}')
-        finally:
-            conn.close()
+        # Ejecutar consulta con fechas normalizadas
+        print("DEBUG hab_disponibles: fe_ini =", fe_ini, "fe_fin =", fe_fin)
+        cursor.execute(query, {"fecha_entrada": fe_ini, "fecha_salida": fe_fin})
+        rows = cursor.fetchall()
+        resultado = [[r[0], r[1] or '', r[2] or '', r[3] or 0, r[4] or ''] for r in rows]
+
+        # Si no hay resultados, listar conflictos para diagnóstico
+        if not resultado:
+            print("hab_disponibles: no se retornaron habitaciones; listando conflictos que solapan rango...")
+            cursor.execute("""
+                SELECT 'reserva' AS fuente, id, numero_hab, fecha_entrada, fecha_salida, estado
+                FROM reservas
+                WHERE date(fecha_entrada) < date(:fecha_salida) AND date(fecha_salida) > date(:fecha_entrada)
+                  AND estado NOT IN ('Cancelada','Completada')
+                UNION ALL
+                SELECT 'walk_in' AS fuente, id, numero_hab, fecha_entrada, fecha_salida, estado
+                FROM walk_ins
+                WHERE date(fecha_entrada) < date(:fecha_salida) AND date(fecha_salida) > date(:fecha_entrada)
+                  AND estado NOT IN ('Cancelada','Completada')
+                ORDER BY numero_hab, fecha_entrada;
+            """, {"fecha_entrada": fe_ini, "fecha_salida": fe_fin})
+            conflictos = cursor.fetchall()
+            for c in conflictos:
+                print("CONFLICTO:", dict(c))
+
+        # filtros opcionales en Python
+        if tipo != "Todos":
+            resultado = [h for h in resultado if h[1] == tipo]
+        if capacidad_minima is not None:
+            resultado = [h for h in resultado if h[3] >= capacidad_minima]
+
+        return resultado
+    except sql.Error as e:
+        print("Error en hab_disponibles:", e)
+        return []
+    finally:
+        conn.close()
 
 def registrar_pago(datos):
     conn = conectar_bd()
