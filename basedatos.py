@@ -1,11 +1,12 @@
 import sqlite3 as sql
-from datetime import date
+from datetime import date, datetime, timedelta
 
 NOMBRE_BASEDATOS = 'base_datos.db'
 
 def conectar_bd():
     try:
-        conn = sql.connect(NOMBRE_BASEDATOS)
+        conn = sql.connect(NOMBRE_BASEDATOS, timeout=10)
+        conn.row_factory = sql.Row
         return conn
     except sql.Error as e:
         print(f'Error al conectarse a la base de datos: {e}')
@@ -132,6 +133,10 @@ def crear_tablas():
             );
             """)
             conn.commit()
+            try:
+                cursor.execute("ALTER TABLE reservas ADD COLUMN es_walkin INTEGER DEFAULT 0")
+            except sql.Error:
+                pass
             print('4. Tabla "reservas" creada exitosamente')
 
             #4.5. areas
@@ -164,26 +169,6 @@ def crear_tablas():
             """)
             conn.commit()
             print('5. Tabla "personal" creada exitosamente')
-
-            #6. turnos
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS turnos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                id_personal INTEGER NOT NULL,
-                fecha_especifica DATE NOT NULL,
-                hora_inicio TEXT NOT NULL,
-                hora_fin TEXT NOT NULL,
-                area_id INTEGER NOT NULL,
-                activo BOOLEAN DEFAULT 1,
-                fecha_creacion DATETIME DEFAULT (datetime('now')),
-                tipo_asignacion TEXT DEFAULT 'individual',
-                informacion_adicional TEXT,
-                FOREIGN KEY (id_personal) REFERENCES personal(id),
-                FOREIGN KEY (area_id) REFERENCES areas(id)
-            );
-            """)
-            conn.commit()
-            print('6. Tabla "turnos" creada exitosamente')
 
             #8. tickets de mantenimiento
             cursor.execute("""
@@ -358,7 +343,20 @@ def crear_tablas():
             """)
             conn.commit()
             print('16. Tabla "transacciones_inventario" creada exitosamente')
-
+                       
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS pagos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_reserva INTEGER,
+                monto_local REAL,
+                moneda TEXT,
+                tasa REAL,
+                monto_equivalente REAL,
+                fecha TEXT
+            );
+            """)
+            conn.commit()
+            cursor.execute("ALTER TABLE pagos ADD COLUMN fuente_tasa TEXT DEFAULT 'Manual'")
             conn.close()
             print('Todas las tablas creadas exitosamente')
         except sql.Error as e:
@@ -382,14 +380,14 @@ def insertar_datos_muestra():
             # Insertar Clientes
             cursor.execute("""
             INSERT INTO clientes (nombres, apellidos, tipo_doc, numero_doc, fecha_nac, genero, nacionalidad, telefono, email) VALUES
-            ('María', 'Pérez', 'Cédula', '001-1234567-8', '1995-02-01', 'Femenino', 'Dominicana', '809-555-0000', 'maria@example.com'),
-            ('Juan', 'Gómez', 'Pasaporte', 'P123456', '1990-11-10', 'Masculino', 'Argentina', '11-5555-5555', 'juan@example.com'),
-            ('Ana', 'Rodríguez', 'Cédula', '001-2345678-9', '1988-07-15', 'Femenino', 'Dominicana', '809-555-1111', 'ana@example.com'),
-            ('Carlos', 'López', 'Cédula', '001-3456789-0', '1992-03-20', 'Masculino', 'Dominicana', '809-555-2222', 'carlos@example.com'),
-            ('Sofia', 'Martínez', 'Pasaporte', 'P789012', '1993-09-12', 'Femenino', 'Español', '34-666-777-888', 'sofia@example.com'),
-            ('Roberto', 'Fernández', 'Cédula', '001-4567890-1', '1985-12-05', 'Masculino', 'Dominicana', '809-555-3333', 'roberto@example.com'),
-            ('Carmen', 'García', 'Cédula', '001-5678901-2', '1991-06-18', 'Femenino', 'Dominicana', '809-555-4444', 'carmen@example.com'),
-            ('Miguel', 'Santos', 'Cédula', '001-6789012-3', '1987-04-25', 'Masculino', 'Dominicana', '809-555-5555', 'miguel@example.com');
+            ('María', 'Pérez', 'Cédula', '001-1234567-8', '1995-02-01', 'Femenino', 'Dominicana', '809-555-0000', 'maria@email.com'),
+            ('Juan', 'Gómez', 'Pasaporte', 'P123456', '1990-11-10', 'Masculino', 'Argentina', '11-5555-5555', 'juan@email.com'),
+            ('Ana', 'Rodríguez', 'Cédula', '001-2345678-9', '1988-07-15', 'Femenino', 'Dominicana', '809-555-1111', 'ana@email.com'),
+            ('Carlos', 'López', 'Cédula', '001-3456789-0', '1992-03-20', 'Masculino', 'Dominicana', '809-555-2222', 'carlos@email.com'),
+            ('Sofia', 'Martínez', 'Pasaporte', 'P789012', '1993-09-12', 'Femenino', 'Español', '34-666-777-888', 'sofia@email.com'),
+            ('Roberto', 'Fernández', 'Cédula', '001-4567890-1', '1985-12-05', 'Masculino', 'Dominicana', '809-555-3333', 'roberto@email.com'),
+            ('Carmen', 'García', 'Cédula', '001-5678901-2', '1991-06-18', 'Femenino', 'Dominicana', '809-555-4444', 'carmen@email.com'),
+            ('Miguel', 'Santos', 'Cédula', '001-6789012-3', '1987-04-25', 'Masculino', 'Dominicana', '809-555-5555', 'miguel@email.com');
             """)
 
             # Insertar Habitaciones
@@ -453,17 +451,17 @@ def insertar_datos_muestra():
                 fecha_entrada, fecha_salida, id_pago, monto_pago,
                 checked_in, checked_out, estado, notas
             ) VALUES
-            ('101', 'Doble', 1, 'María Pérez', 'maria@example.com', date('now'), date('now', '+2 days'), 1, 160.00, 1, 0, 'En curso', ''),
-            ('102', 'Individual', 2, 'Juan Gómez', 'juan@example.com', date('now'), date('now', '+1 day'), 2, 50.00, 1, 0, 'En curso', ''),
-            ('203', 'Suite', 6, 'Roberto Fernández', 'roberto@example.com', date('now', '-1 day'), date('now', '+1 day'), 3, 300.00, 1, 0, 'En curso', ''),
-            ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@example.com', date('now', '+1 day'), date('now', '+3 days'), 11, 300.00, 0, 0, 'Pendiente', ''),
-            ('301', 'Doble', 4, 'Carlos López', 'carlos@example.com', date('now', '+2 days'), date('now', '+4 days'), 12, 160.00, 0, 0, 'Pendiente', ''),
-            ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@example.com', date('now', '+5 days'), date('now', '+7 days'), 13, 600.00, 0, 0, 'Pendiente', ''),
-            ('103', 'Individual', 7, 'Carmen García', 'carmen@example.com', date('now', '+10 days'), date('now', '+12 days'), 14, 100.00, 0, 0, 'Pendiente', ''),
-            ('101', 'Doble', 8, 'Luis Pérez', 'luis@example.com', date('now', '-7 days'), date('now', '-5 days'), 15, 160.00, 1, 1, 'Completada', 'Estancia finalizada sin incidencias'),
-            ('203', 'Suite', 9, 'Elena Torres', 'elena@example.com', date('now', '-12 days'), date('now', '-10 days'), 16, 300.00, 1, 1, 'Completada', ''),
-            ('102', 'Individual', 10, 'Mario Díaz', 'mario@example.com', date('now', '-3 days'), date('now', '-1 day'), 17, 50.00, 0, 0, 'Cancelada', 'Cancelada por el cliente'),
-            ('301', 'Doble', 11, 'Ana Ruiz', 'ana.ruiz@example.com', date('now', '+4 days'), date('now', '+6 days'), 18, 160.00, 0, 0, 'Cancelada', 'Cancelada por no show');
+            ('101', 'Doble', 1, 'María Pérez', 'maria@email.com', date('now'), date('now', '+2 days'), 1, 160.00, 1, 0, 'En curso', ''),
+            ('102', 'Individual', 2, 'Juan Gómez', 'juan@email.com', date('now'), date('now', '+1 day'), 2, 50.00, 1, 0, 'En curso', ''),
+            ('203', 'Suite', 6, 'Roberto Fernández', 'roberto@email.com', date('now', '-1 day'), date('now', '+1 day'), 3, 300.00, 1, 0, 'En curso', ''),
+            ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@email.com', date('now', '+1 day'), date('now', '+3 days'), 11, 300.00, 0, 0, 'Pendiente', ''),
+            ('301', 'Doble', 4, 'Carlos López', 'carlos@email.com', date('now', '+2 days'), date('now', '+4 days'), 12, 160.00, 0, 0, 'Pendiente', ''),
+            ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@email.com', date('now', '+5 days'), date('now', '+7 days'), 13, 600.00, 0, 0, 'Pendiente', ''),
+            ('103', 'Individual', 7, 'Carmen García', 'carmen@email.com', date('now', '+10 days'), date('now', '+12 days'), 14, 100.00, 0, 0, 'Pendiente', ''),
+            ('101', 'Doble', 8, 'Luis Pérez', 'luis@email.com', date('now', '-7 days'), date('now', '-5 days'), 15, 160.00, 1, 1, 'Completada', 'Estancia finalizada sin incidencias'),
+            ('203', 'Suite', 9, 'Elena Torres', 'elena@email.com', date('now', '-12 days'), date('now', '-10 days'), 16, 300.00, 1, 1, 'Completada', ''),
+            ('102', 'Individual', 10, 'Mario Díaz', 'mario@email.com', date('now', '-3 days'), date('now', '-1 day'), 17, 50.00, 0, 0, 'Cancelada', 'Cancelada por el cliente'),
+            ('301', 'Doble', 11, 'Ana Ruiz', 'ana.ruiz@email.com', date('now', '+4 days'), date('now', '+6 days'), 18, 160.00, 0, 0, 'Cancelada', 'Cancelada por no show');
             """)
 
             # Insertar Walk-ins
@@ -472,20 +470,8 @@ def insertar_datos_muestra():
                 numero_hab, cliente_nombre, cliente_email, fecha_entrada, fecha_salida,
                 total_personas, id_pago, checked_in, checked_out, estado, notas
             ) VALUES
-            ('302', 'Pedro Ramírez', 'pedro@example.com', date('now'), date('now', '+1 day'), 2, 4, 1, 0, 'En curso', 'Walk-in de ejemplo'),
-            ('103', 'Cliente anterior', 'clienteanterior@example.com', date('now', '-25 days'), date('now', '-24 days'), 1, 9, 1, 0, 'Finalizado', 'Walk-in del mes anterior');
-            """)
-
-            # Insertar Turnos
-            cursor.execute("""
-            INSERT INTO turnos (id_personal, fecha_especifica, hora_inicio, hora_fin, area_id, tipo_asignacion) VALUES
-            (1, date('now'), '08:00', '16:00', (SELECT id FROM areas WHERE nombre='Housekeeping'), 'individual'),
-            (2, date('now'), '09:00', '17:00', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 'individual'),
-            (3, date('now'), '07:00', '15:00', (SELECT id FROM areas WHERE nombre='Front Desk'), 'individual'),
-            (4, date('now', '+1 day'), '09:00', '17:00', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 'individual'),
-            (5, date('now', '+1 day'), '08:00', '16:00', (SELECT id FROM areas WHERE nombre='Housekeeping'), 'individual'),
-            (1, date('now', '+2 days'), '08:00', '16:00', (SELECT id FROM areas WHERE nombre='Housekeeping'), 'individual'),
-            (2, date('now', '+2 days'), '09:00', '17:00', (SELECT id FROM areas WHERE nombre='Mantenimiento'), 'individual');
+            ('302', 'Pedro Ramírez', 'pedro@email.com', date('now'), date('now', '+1 day'), 2, 4, 1, 0, 'En curso', 'Walk-in de ejemplo'),
+            ('103', 'Cliente anterior', 'clienteanterior@email.com', date('now', '-25 days'), date('now', '-24 days'), 1, 9, 1, 0, 'Finalizado', 'Walk-in del mes anterior');
             """)
 
             # Insertar Tickets de Mantenimiento
@@ -584,7 +570,6 @@ def limpiar_datos():
             cursor.execute("DELETE FROM checkins_checkouts;")
             cursor.execute("DELETE FROM walk_ins;")
             cursor.execute("DELETE FROM tickets_mantenimiento;")
-            cursor.execute("DELETE FROM turnos;")
             cursor.execute("DELETE FROM housekeeping_plan;")
             cursor.execute("DELETE FROM personal;")
             cursor.execute("DELETE FROM reservas;")
@@ -608,8 +593,6 @@ def limpiar_datos():
             SELECT 'walk_ins', COUNT(*) FROM walk_ins
             UNION ALL
             SELECT 'tickets_mantenimiento', COUNT(*) FROM tickets_mantenimiento
-            UNION ALL
-            SELECT 'turnos', COUNT(*) FROM turnos
             UNION ALL
             SELECT 'housekeeping_plan', COUNT(*) FROM housekeeping_plan
             UNION ALL
@@ -637,6 +620,12 @@ def limpiar_datos():
             print(f'Error al eliminar datos: {e}')
         finally:
             conn.close()
+
+def validar_fecha(fecha_str):
+    try:
+        return datetime.strptime(fecha_str, '%Y-%m-%d').date()
+    except Exception:
+        return None
 
 def kpi_alojamiento(): #retorna la cantidad de habitaciones ocupadas y la cantidad de personas alojadas en el día de hoy
     conn = conectar_bd()
@@ -972,6 +961,7 @@ def buscar_habitacion(texto, estado): #el query de consulta para buscar
     if conn:
         cursor = conn.cursor()
         try:
+            patron = f"%{texto}%" if texto else "%"
             cursor.execute("""
                 SELECT 
                     h.id as "ID",
@@ -986,13 +976,13 @@ def buscar_habitacion(texto, estado): #el query de consulta para buscar
                 WHERE 
                     (? = 'Todos' OR h.estado = ?)
                     AND (
-                        h.numero LIKE ? 
-                        OR th.nombre LIKE ? 
-                        OR h.ubicacion LIKE ? 
-                        OR h.notas LIKE ?
+                        COALESCE(h.numero, '') LIKE ?
+                        OR COALESCE(th.nombre, '') LIKE ?
+                        OR COALESCE(h.ubicacion, '') LIKE ?
+                        OR COALESCE(h.notas, '') LIKE ?
                     )
                 ORDER BY h.numero;
-            """, (estado, estado, f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%'))
+            """, (estado, estado, patron, patron, patron, patron))
             
             resultado = cursor.fetchall()
             return resultado
@@ -1121,64 +1111,127 @@ def guardar_tipo_habitacion(tipo, datos, clave):
         finally:
             conn.close()
 
-def hab_disponibles(fecha_entrada, fecha_salida, tipo = "Todos", capacidad_minima = None):
-    query = """
-            SELECT h.*
-            FROM habitaciones h
-            WHERE h.estado = 'Disponible'
-            AND h.numero NOT IN (
-                SELECT r.numero_hab
-                FROM reservas r
-                WHERE r.estado != 'Cancelada'
-                AND r.fecha_entrada < :fecha_salida
-                AND r.fecha_salida > :fecha_entrada
-            )
-            -- Caso especial: si la fecha de entrada es hoy, excluir habitaciones con check-in activo
-            AND (:fecha_entrada != DATE('now')
-                OR h.numero NOT IN (
-                    SELECT r.numero_hab
-                    FROM reservas r
-                    WHERE r.checked_in = 1 AND r.checked_out = 0
-                )
-            );
-            """
-    
-    query2 = """
-            SELECT nombre FROM tipos_habitacion
-            WHERE id = ?
-            """
-    
+def hab_disponibles(fecha_entrada, fecha_salida, tipo="Todos", capacidad_minima=None):
+    """
+    Retorna habitaciones disponibles entre fechas (acepta 'YYYY-MM-DD' o 'DD-MM-YYYY').
+    - Normaliza fechas de entrada a ISO.
+    - Convierte en la BD filas con formato DD-MM-YYYY a YYYY-MM-DD.
+    - Considera bloqueantes cualquier reserva/walk_in cuyo estado NO sea 'Cancelada' ni 'Completada'.
+    """
+    def _to_iso(f):
+        if not f:
+            return None
+        if isinstance(f, (date, datetime)):
+            return f.date().isoformat() if isinstance(f, datetime) else f.isoformat()
+        for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(f, fmt).date().isoformat()
+            except Exception:
+                pass
+        return None
+
+    fe_ini = _to_iso(fecha_entrada)
+    fe_fin = _to_iso(fecha_salida)
+    if not fe_ini or not fe_fin:
+        print("hab_disponibles: formato de fecha inválido:", fecha_entrada, fecha_salida)
+        return []
+
     conn = conectar_bd()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute(query, {"fecha_entrada": fecha_entrada, "fecha_salida": fecha_salida})
-            habitaciones = cursor.fetchall()
-            resultado = []
-            for habitacion in habitaciones:
-                datos_hab = []
-                datos_hab.append(habitacion[1])
-                cursor.execute(query2, (habitacion[2],))
-                tipo_hab = cursor.fetchone()[0]
-                datos_hab.append(tipo_hab)
-                datos_hab.append(habitacion[4])
-                datos_hab.append(habitacion[5])
+    if not conn:
+        return []
+    cursor = conn.cursor()
+    try:
+        # Normalizar fechas almacenadas en DD-MM-YYYY -> YYYY-MM-DD para reservas y walk_ins
+        updates = [
+            ("reservas", "fecha_entrada"),
+            ("reservas", "fecha_salida"),
+            ("walk_ins", "fecha_entrada"),
+            ("walk_ins", "fecha_salida"),
+        ]
+        total_converted = 0
+        for table, col in updates:
+            sql_upd = f"""
+                UPDATE {table}
+                SET {col} = substr({col},7,4) || '-' || substr({col},4,2) || '-' || substr({col},1,2)
+                WHERE {col} IS NOT NULL
+                  AND length({col}) = 10
+                  AND substr({col},3,1) = '-'
+                  AND substr({col},6,1) = '-'
+                  AND substr({col},5,1) != '-'
+            """
+            cursor.execute(sql_upd)
+            total_converted += cursor.rowcount
+        if total_converted:
+            conn.commit()
+            print(f"hab_disponibles: convertidas {total_converted} fechas de formato DD-MM-YYYY a ISO")
 
-                resultado.append(datos_hab)
-            if tipo != "Todos":
-                resultado = [habitacion for habitacion in resultado if habitacion[1] == tipo]
-            if capacidad_minima is not None:
-                resultado = [habitacion for habitacion in resultado if habitacion[3] >= capacidad_minima]
+        # Consulta: cualquier reserva/walk_in que se solape y cuyo estado NO sea 'Cancelada' ni 'Completada' bloquea la habitación
+        query = """
+            SELECT 
+                h.numero,
+                th.nombre AS tipo,
+                h.ubicacion,
+                h.capacidad,
+                h.estado
+            FROM habitaciones h
+            JOIN tipos_habitacion th ON h.tipo_id = th.id
+            WHERE 
+                -- No existe reserva no-cancelada/no-completada que se solape con el rango
+                NOT EXISTS (
+                    SELECT 1 FROM reservas r
+                    WHERE r.numero_hab = h.numero
+                      AND date(r.fecha_entrada) < date(:fecha_salida)
+                      AND date(r.fecha_salida)  > date(:fecha_entrada)
+                      AND r.estado NOT IN ('Cancelada','Completada')
+                )
+                -- No existe walk_in no-cancelado/no-completado que se solape con el rango
+                AND NOT EXISTS (
+                    SELECT 1 FROM walk_ins w
+                    WHERE w.numero_hab = h.numero
+                      AND date(w.fecha_entrada) < date(:fecha_salida)
+                      AND date(w.fecha_salida)  > date(:fecha_entrada)
+                      AND w.estado NOT IN ('Cancelada','Completada')
+                )
+            ORDER BY h.numero;
+        """
 
-            return resultado #retorna una lista con los siguientes datos:
-            #0: el numero de la habitacion
-            #1: el tipo de habitación
-            #2: la ubicacion de la habitacion
-            #3: la capacidad de la habitacion
-        except sql.Error as e:
-            print(f'Error al obtener habitaciones: {e}')
-        finally:
-            conn.close()
+        # Ejecutar consulta con fechas normalizadas
+        print("DEBUG hab_disponibles: fe_ini =", fe_ini, "fe_fin =", fe_fin)
+        cursor.execute(query, {"fecha_entrada": fe_ini, "fecha_salida": fe_fin})
+        rows = cursor.fetchall()
+        resultado = [[r[0], r[1] or '', r[2] or '', r[3] or 0, r[4] or ''] for r in rows]
+
+        # Si no hay resultados, listar conflictos para diagnóstico
+        if not resultado:
+            print("hab_disponibles: no se retornaron habitaciones; listando conflictos que solapan rango...")
+            cursor.execute("""
+                SELECT 'reserva' AS fuente, id, numero_hab, fecha_entrada, fecha_salida, estado
+                FROM reservas
+                WHERE date(fecha_entrada) < date(:fecha_salida) AND date(fecha_salida) > date(:fecha_entrada)
+                  AND estado NOT IN ('Cancelada','Completada')
+                UNION ALL
+                SELECT 'walk_in' AS fuente, id, numero_hab, fecha_entrada, fecha_salida, estado
+                FROM walk_ins
+                WHERE date(fecha_entrada) < date(:fecha_salida) AND date(fecha_salida) > date(:fecha_entrada)
+                  AND estado NOT IN ('Cancelada','Completada')
+                ORDER BY numero_hab, fecha_entrada;
+            """, {"fecha_entrada": fe_ini, "fecha_salida": fe_fin})
+            conflictos = cursor.fetchall()
+            for c in conflictos:
+                print("CONFLICTO:", dict(c))
+
+        # filtros opcionales en Python
+        if tipo != "Todos":
+            resultado = [h for h in resultado if h[1] == tipo]
+        if capacidad_minima is not None:
+            resultado = [h for h in resultado if h[3] >= capacidad_minima]
+
+        return resultado
+    except sql.Error as e:
+        print("Error en hab_disponibles:", e)
+        return []
+    finally:
+        conn.close()
 
 def registrar_pago(datos):
     conn = conectar_bd()
@@ -1205,7 +1258,7 @@ def guardar_reserva(tipo, datos, clave = None):
             if tipo == "agregar": #agregar reserva
                 cursor.execute("""
                 INSERT INTO reservas(numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email, fecha_entrada, fecha_salida, total_personas,id_pago, monto_pago, notas)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (datos))
             else: #editar reserva. las reservas no se editan
                 # cursor.execute("""
@@ -1929,6 +1982,144 @@ def estado_ticket(estado, id, solucion = None, notas = None):
         finally:
             conn.close()
 
+def obtener_personal_activo():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT 
+                p.codigo,
+                p.nombre,
+                p.apellido,
+                p.puesto,
+                a.nombre AS area_id,   -- muestra el nombre del área en lugar del ID
+                p.estado,
+                p.fecha_contratacion
+            FROM personal p
+            LEFT JOIN areas a ON p.area_id = a.id
+            WHERE p.estado = 'Activo'
+            ORDER BY p.codigo;
+            """)
+            consulta = cursor.fetchall()
+            return consulta
+        except sql.Error as e:
+            print(f'Error al obtener empleados: {e}')
+        finally:
+            conn.close()
+
+def buscar_empleado(texto, estado): #el query de consulta para buscar
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT 
+                    p.codigo,
+                    p.nombre,
+                    p.apellido,
+                    p.puesto,
+                    a.nombre AS area_id,
+                    p.estado,
+                    p.fecha_contratacion
+                FROM personal p
+                LEFT JOIN areas a ON p.area_id = a.id
+                WHERE (? = 'Activo' OR p.estado = ?)
+                    AND (
+                        p.codigo LIKE ?
+                        OR p.nombre LIKE ?
+                        OR p.apellido LIKE ?
+                        OR p.puesto LIKE ?
+                        OR a.nombre LIKE ?
+                    )
+                ORDER BY p.codigo;
+            """, (estado, estado, f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%'))
+            
+            resultado = cursor.fetchall()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al buscar: {e}')
+        finally:
+            conn.close()
+
+def ver_detalle_empleado(codigo):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+            SELECT * FROM personal
+            WHERE codigo = ?;
+            """, (codigo,))
+            resultado = cursor.fetchone()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener información: {e}')
+        finally:
+            conn.close()
+
+def generar_codigo_empleado():
+    """
+    Genera el siguiente código de empleado en secuencia con formato EMPNNN.
+    Usa el mayor número actual extraído del sufijo numérico del campo 'codigo'.
+    """
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            # Extrae el máximo valor numérico del sufijo (asumiendo formato EMP###)
+            cursor.execute("SELECT MAX(CAST(substr(codigo,4) AS INTEGER)) FROM personal;")
+            row = cursor.fetchone()
+            max_num = row[0] if row and row[0] is not None else 0
+            siguiente = int(max_num) + 1
+            return f"EMP{siguiente:03d}"
+        except sql.Error as e:
+            print(f'Error generando codigo empleado: {e}')
+            return None
+        finally:
+            conn.close()
+
+def guardar_empleado(tipo, datos):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            if tipo == "agregar":
+                cursor.execute("""
+                    INSERT INTO personal
+                    (codigo, nombre, apellido, puesto, area_id, salario_hora, fecha_contratacion, telefono, email, estado)
+                    VALUES (?, ?, ?, ?, ?, ?, date('now'), ?, ?, 'Activo')
+                """, (datos))
+            else:
+                cursor.execute("""
+                    UPDATE personal
+                    SET codigo = ?, nombre = ?, apellido = ?, puesto = ?, area_id = ?, salario_hora = ?, telefono = ?, email = ?
+                    WHERE codigo = ?
+                """, (*datos[:8], datos[0]))
+            conn.commit()
+            return True, "Empleado guardado exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar empleado: {e}"
+        finally:
+            conn.close()
+
+def inactivar_empleado(codigo):
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE personal
+                SET estado = 'Inactivo', fecha_inactivacion = date('now')
+                WHERE codigo = ?
+                """,(codigo,))
+            conn.commit()
+            return True, "Datos insertados exitosamente"
+        except sql.Error as e:
+            return False, f"Error al guardar datos: {e}"
+        finally:
+            conn.close()
+
 def obtener_cotizaciones_eventos():
     conn = conectar_bd()
     if conn:
@@ -1936,7 +2127,7 @@ def obtener_cotizaciones_eventos():
         cursor.execute('SELECT * FROM eventos ORDER BY fecha DESC')
         return cursor.fetchall()
     return []
-
+    
 
 def obtener_columnas_eventos():
     """Return list of column names in eventos table in order."""
@@ -2028,3 +2219,277 @@ def actualizar_cotizacion_evento(id_, tipo, salon, fecha, hora, equipamiento, ca
         cursor.execute(sql, tuple(values))
         conn.commit()
         conn.close()
+
+def obtener_dashboard_frontdesk():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        hoy = date.today().isoformat()
+        try:
+            cursor.execute("SELECT COUNT(*) FROM checkins_checkouts WHERE tipo='checkin' AND date(fecha_hora) = ?", (hoy,))
+            checkins = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM checkins_checkouts WHERE tipo='checkout' AND date(fecha_hora) = ?", (hoy,))
+            checkouts = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM habitaciones WHERE estado='Ocupada'")
+            ocupadas = cursor.fetchone()[0]
+            cursor.execute("SELECT SUM(monto) FROM ingresos WHERE date(fecha_pago) = ?", (hoy,))
+            ingresos = cursor.fetchone()[0] or 0.0
+        finally:
+            conn.close()
+        return checkins, checkouts, ocupadas, ingresos
+    return 0, 0, 0, 0.0 # Default values if conn is None
+
+
+
+def buscar_reserva_frontdesk(query):
+    conn = conectar_bd()
+    if not conn:
+        return []
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT r.id, c.nombres || ' ' || c.apellidos as cliente_nombre, r.numero_hab,
+                   r.fecha_entrada, r.fecha_salida, r.monto_pago, r.estado
+            FROM reservas r
+            JOIN clientes c ON r.id_cliente = c.id
+            WHERE (r.id LIKE ? OR c.nombres LIKE ? OR c.apellidos LIKE ? OR r.numero_hab LIKE ?)
+            AND r.estado = 'Pendiente'
+        """, (f'%{query}%', f'%{query}%', f'%{query}%', f'%{query}%'))
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+def registrar_checkin(reserva_id):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT numero_hab FROM reservas WHERE id=?", (reserva_id,))
+        hab = cur.fetchone()
+        if not hab:
+            raise Exception("Reserva no encontrada")
+        numero_hab = hab['numero_hab']
+
+        cur.execute("UPDATE reservas SET estado='checked-in', checked_in=1 WHERE id=?", (reserva_id,))
+        cur.execute("UPDATE habitaciones SET estado='Ocupada' WHERE numero=?", (numero_hab,))
+        cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo) VALUES (?, 'checkin')", (reserva_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+def registrar_early_checkin(reserva_id, monto_cargo):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("BEGIN")
+        registrar_checkin(reserva_id)
+        cur.execute("""
+            INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago, notas)
+            VALUES (?, ?, ?, ?, ?)
+        """, ('costo_adicional_checkout', 'Early Check-in', monto_cargo, 'efectivo', f'Reserva ID: {reserva_id}'))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def buscar_habitaciones_disponibles(fecha_entrada, fecha_salida, tipo_hab):
+    conn = conectar_bd()
+    if not conn:
+        return []
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT h.numero, t.nombre as tipo_nombre, t.precio_base
+            FROM habitaciones h
+            JOIN tipos_habitacion t ON h.tipo_id = t.id
+            WHERE t.nombre = ? AND h.estado = 'Disponible' AND h.numero NOT IN (
+                SELECT numero_hab FROM reservas
+                WHERE fecha_salida > ? AND fecha_entrada < ? AND estado != 'Cancelada'
+            )
+        """, (tipo_hab, fecha_entrada, fecha_salida))
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def registrar_walkin(nombre, email, f_entrada, f_salida, personas, monto, num_hab):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("BEGIN")
+        # Buscar cliente por email
+        cur.execute("SELECT id FROM clientes WHERE email = ?", (email,))
+        row = cur.fetchone()
+        if row:
+            id_cliente = row['id']
+        else:
+            # Crear cliente genérico
+            cur.execute("""
+                INSERT INTO clientes (nombres, apellidos, tipo_doc, numero_doc, fecha_nac, genero, nacionalidad, telefono, email)
+                VALUES (?, '', 'Otro', '', date('now'), '', '', '', ?)
+            """, (nombre, email))
+            id_cliente = cur.lastrowid
+
+        # Registrar el ingreso
+        cur.execute("INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago) VALUES (?,?,?,?)",
+                    ('walk_in', f'Walk-in Hab {num_hab}', monto, 'efectivo'))
+        pago_id = cur.lastrowid
+
+        # Insertar en reservas
+        cur.execute("""
+            INSERT INTO reservas (
+                numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email,
+                fecha_entrada, fecha_salida, total_personas, id_pago, monto_pago,
+                checked_in, checked_out, estado, es_walkin
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 'En curso', 1)
+        """, (
+            num_hab, 'Walk-in', id_cliente, nombre, email,
+            f_entrada, f_salida, personas, pago_id, monto
+        ))
+        reserva_id = cur.lastrowid
+
+        # Actualizar estado de la habitación
+        cur.execute("UPDATE habitaciones SET estado='Ocupada' WHERE numero=?", (num_hab,))
+        # Registrar el check-in
+        cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo) VALUES (?, 'checkin')", (reserva_id,))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+def agregar_cargo_checkout(reserva_id, concepto, descripcion, monto):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago, notas)
+            VALUES (?, ?, ?, ?, ?)
+        """, ('costo_adicional_checkout', concepto, monto, 'efectivo', f'Reserva ID: {reserva_id} - {descripcion}'))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def extender_estadia(reserva_id, nueva_salida):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT fecha_salida, monto_pago, numero_hab FROM reservas WHERE id=?", (reserva_id,))
+        res = cur.fetchone()
+        if not res:
+            raise Exception("Reserva no encontrada para extender.")
+
+        fecha_salida_actual = validar_fecha(res['fecha_salida'])
+        fecha_nueva_salida = validar_fecha(nueva_salida)
+
+        if not fecha_salida_actual or not fecha_nueva_salida:
+            raise Exception("Fechas inválidas para calcular la extensión.")
+
+        dias_actuales = (fecha_salida_actual - date.today()).days
+        dias_nuevos = (fecha_nueva_salida - fecha_salida_actual).days
+        
+        if dias_nuevos <= 0:
+            raise Exception("La nueva fecha de salida debe ser posterior a la actual.")
+
+        precio_noche = res['monto_pago'] / dias_actuales if dias_actuales > 0 else 50
+        monto_adicional = dias_nuevos * precio_noche
+        cur.execute("UPDATE reservas SET fecha_salida=?, monto_pago=monto_pago+? WHERE id=?", (nueva_salida, monto_adicional, reserva_id))
+        agregar_cargo_checkout(reserva_id, "Extensión de estadía", f"{dias_nuevos} noches adicionales", monto_adicional)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def registrar_checkout(reserva_id):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT numero_hab FROM reservas WHERE id=?", (reserva_id,))
+        hab = cur.fetchone()
+        if not hab:
+            raise Exception("Reserva no encontrada")
+        numero_hab = hab['numero_hab']
+        cur.execute("UPDATE reservas SET estado='Completada', checked_out=1 WHERE id=?", (reserva_id,))
+        cur.execute("UPDATE habitaciones SET estado='Sucia' WHERE numero=?", (numero_hab,))
+        cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo) VALUES (?, 'checkout')", (reserva_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def registrar_late_checkout(reserva_id, monto_cargo):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("BEGIN")
+        agregar_cargo_checkout(reserva_id, "Late Check-Out", "Cargo por salida tardía", monto_cargo)
+        # No se hace el checkout aquí, solo se agrega el cargo. El checkout se confirma por separado.
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def obtener_total_deuda(reserva_id):
+    conn = conectar_bd()
+    if not conn:
+        return 0.0
+    cur = conn.cursor()
+    total_deuda = 0.0
+    try:
+        # Obtener el monto original de la reserva
+        cur.execute("SELECT monto_pago FROM reservas WHERE id=?", (reserva_id,))
+        res = cur.fetchone()
+        if res and res['monto_pago']:
+            total_deuda += float(res['monto_pago'])
+
+        # Sumar todos los cargos adicionales
+        cur.execute("SELECT SUM(monto) FROM ingresos WHERE tipo_ingreso='costo_adicional_checkout' AND notas LIKE ?", (f'%Reserva ID: {reserva_id}%',))
+        cargos = cur.fetchone()
+        if cargos and cargos[0]:
+            total_deuda += float(cargos[0])
+            
+    except Exception as e:
+        print(f"Error al calcular la deuda total: {e}")
+    finally:
+        conn.close()
+    return total_deuda
+
+def registrar_early_checkout(reserva_id):
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT numero_hab FROM reservas WHERE id=?", (reserva_id,))
+        hab = cur.fetchone()
+        if not hab:
+            raise Exception("Reserva no encontrada")
+        numero_hab = hab['numero_hab']
+        cur.execute("UPDATE reservas SET estado='Completada', checked_out=1 WHERE id=?", (reserva_id,))
+        cur.execute("UPDATE habitaciones SET estado='Sucia' WHERE numero=?", (numero_hab,))
+        cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo) VALUES (?, 'checkout_anticipado')", (reserva_id,))
+        conn.commit()
+    finally:
+        conn.close()
+

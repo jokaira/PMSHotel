@@ -523,7 +523,19 @@ class GestorReservas(ctk.CTkFrame):
             if not (fecha_entrada and fecha_salida and tipo_hab):
                 return
 
-            hab_disp = basedatos.hab_disponibles(fecha_entrada=fecha_entrada, fecha_salida=fecha_salida)
+            try:
+                fe_ini_dt = datetime.strptime(fecha_entrada, '%d-%m-%Y')
+                fe_fin_dt = datetime.strptime(fecha_salida, '%d-%m-%Y')
+                fe_ini_iso = fe_ini_dt.date().isoformat()
+                fe_fin_iso = fe_fin_dt.date().isoformat()
+            except Exception as e:
+                print("DEBUG: error parseando fechas:", fecha_entrada, fecha_salida, e)
+                messagebox.showerror("Error", "Formato de fecha inválido. Use DD-MM-YYYY")
+                return
+
+            print("DEBUG llamar hab_disponibles con (ISO):", fe_ini_iso, fe_fin_iso, "tipo:", tipo_hab)
+            hab_disp = basedatos.hab_disponibles(fecha_entrada=fe_ini_iso, fecha_salida=fe_fin_iso, tipo=tipo_hab)
+
        
             cant_habitaciones = 0
             string_disponibles = ""
@@ -576,7 +588,7 @@ class GestorReservas(ctk.CTkFrame):
                            padx=2,
                            pady=2,
                            fill=None,
-                           metodo=lambda:self.modal_reservas(tipo="pago")
+                           metodo=self.guardar_reserva
                            )
 
         btn_limpiar = Boton(master=btn_frame,
@@ -622,134 +634,50 @@ class GestorReservas(ctk.CTkFrame):
                 case "ver":
                     self.ver_reserva(master=dialogo)
 
-    def crear_formulario_pago(self, master):
-        if not self.cliente_actual:
-            messagebox.showerror("Error", "Debe de seleccionar un cliente")
-            master.destroy()
-            return
+    def guardar_reserva(self):
+            if not self.cliente_actual:
+                messagebox.showerror("Error", "Debe de seleccionar un cliente")
+                return
 
-        habitacion = self.habitacion.get().strip() 
-        tipo_hab = self.tipo_habitacion.get().strip()
-        nombre_cliente = str(self.cliente_actual[1] + " " +self.cliente_actual[2])
-        id_cliente = self.cliente_actual[0]
-        email_cliente = self.cliente_actual[9]
-        fecha_entrada = datetime.strftime(datetime.strptime(self.fecha_entrada.get().strip(),'%d-%m-%Y'), '%Y-%m-%d')
-        fecha_salida = datetime.strftime(datetime.strptime(self.fecha_salida.get().strip(),'%d-%m-%Y'), '%Y-%m-%d')
-        pago_total = self.total
-        
-        if not habitacion or not fecha_entrada or not fecha_salida:
-            messagebox.showerror("Error", "Debe de completar todos los datos obligatorios para la reserva")
-            return
+            habitacion = self.habitacion.get().strip() 
+            tipo_hab = self.tipo_habitacion.get().strip()
+            nombre_cliente = str(self.cliente_actual[1] + " " +self.cliente_actual[2])
+            id_cliente = self.cliente_actual[0]
+            email_cliente = self.cliente_actual[9]
+            fecha_entrada = datetime.strftime(datetime.strptime(self.fecha_entrada.get().strip(),'%d-%m-%Y'), '%Y-%m-%d')
+            fecha_salida = datetime.strftime(datetime.strptime(self.fecha_salida.get().strip(),'%d-%m-%Y'), '%Y-%m-%d')
+            pago_total = self.total
 
-        frame_formulario = ctk.CTkFrame(master = master, fg_color='transparent')
-        frame_formulario.pack(fill = 'both', expand = True, padx = 15)
-
-        #variables de los campos
-        metodo_pago = ctk.StringVar()
-        comprobante_pago = ctk.StringVar()
-        notas_pago = ctk.StringVar()
-                
-        # #letrero de campos obligatorios
-        obligatorio = ctk.CTkLabel(master=frame_formulario, text="*: Campos obligatorios")
-        obligatorio.place(relx = 0.95, rely = 0.95, anchor = 'se')
-        
-
-        datos_reserva = ctk.CTkFrame(master=frame_formulario, corner_radius=10, border_color=GRIS_CLARO2, border_width=1, fg_color=GRIS_CLARO)
-        datos_reserva.pack(fill = 'x', anchor = 'n')
-
-        ctk.CTkLabel(master=datos_reserva, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Cliente: {nombre_cliente}", anchor='w').pack(fill='x',expand = True, padx=5)
-        ctk.CTkLabel(master=datos_reserva, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Habitación: {habitacion} ({tipo_hab})", anchor='w').pack(fill='x',expand = True, padx=5)
-        ctk.CTkLabel(master=datos_reserva, text_color=OSCURO, font = (FUENTE, TAMANO_TEXTO_DEFAULT),text=f"Fechas: {fecha_entrada} al {fecha_salida}", anchor='w').pack(fill='x',expand = True, padx=5)
-        ctk.CTkLabel(master=datos_reserva, text_color=OSCURO,text=f"Total: ${pago_total:.2f}", anchor='w', font=(FUENTE, TAMANO_TEXTO_DEFAULT)).pack(fill='x',expand = True, padx=5)
-
-        campos_pago = ctk.CTkFrame(master=frame_formulario, corner_radius=10, fg_color='transparent')
-        campos_pago.pack(fill = 'x', anchor = 'n', pady = 8)
-
-        #método de pago
-        ctk.CTkLabel(master=campos_pago,
-                     text='💳 Método de Pago*',
-                     text_color=OSCURO,
-                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
-                     ).grid(row = 0, column = 0, sticky = 'w', pady = (0,12))
-        ctk.CTkComboBox(master=campos_pago,
-                        variable=metodo_pago,
-                        text_color=OSCURO,
-                        font=(FUENTE, TAMANO_TEXTO_DEFAULT),
-                        button_color=GRIS_CLARO,
-                        button_hover_color=GRIS,
-                        dropdown_fg_color=CLARO,
-                        dropdown_hover_color=GRIS_CLARO,
-                        dropdown_text_color=OSCURO,
-                        dropdown_font=(FUENTE, TAMANO_TEXTO_DEFAULT),
-                        border_color=GRIS,
-                        border_width=1,
-                        values=['Efectivo', 'Tarjeta', 'Transferencia', 'Cheque']
-                        ).grid(row=0, column=1, sticky = 'nsew', pady= (0,12))
-        
-        #comprobante de pago
-        ctk.CTkLabel(master=campos_pago,
-                     text='📝 Número de Comprobante*',
-                     text_color=OSCURO,
-                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
-                     ).grid(row = 0, column = 2, sticky = 'w', padx= (12,0), pady = (0,12))
-        ctk.CTkEntry(master=campos_pago,
-                     textvariable=comprobante_pago,
-                     text_color=OSCURO,
-                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
-                     border_width=1,
-                     border_color=GRIS
-                     ).grid(row = 0, column = 3, sticky = 'nsew', pady = (0,12))
-        
-        #notas de pago
-        ctk.CTkLabel(master=campos_pago,
-                     text='📝 Notas del Pago',
-                     text_color=OSCURO,
-                     font=(FUENTE, TAMANO_TEXTO_DEFAULT)
-                     ).grid(row = 1, column = 0, sticky = 'w', pady = (0,12))
-        ctk.CTkEntry(master=campos_pago,
-                     textvariable=notas_pago,
-                     text_color=OSCURO,
-                     font= (FUENTE, TAMANO_TEXTO_DEFAULT),
-                     border_width=1,
-                     border_color=GRIS
-                     ).grid(row = 1, column = 1, sticky = 'nsew', pady = (0,12))
-
-        def guardar():
-            #datos a guardar en formulario
-            #primero guardo el pago
-            datos_pago = [
-                'reserva',
-                f'Pago reserva habitación {habitacion} - {nombre_cliente} - {self.noches} noches',
-                pago_total,
-                metodo_pago.get().strip().lower(),
-                comprobante_pago.get().strip(),
-                notas_pago.get().strip()
-            ]
-
-            if not datos_pago[3] or not datos_pago[4]:
-                messagebox.showerror("Error", "Por favor complete todos los campos obligatorios")
+            if not habitacion or not fecha_entrada or not fecha_salida:
+                messagebox.showerror("Error", "Debe de completar todos los datos obligatorios para la reserva")
                 return
             
-            fue_exitoso, mensaje_pago, id_pago = basedatos.registrar_pago(datos=datos_pago)
-
-            if not fue_exitoso:
-                messagebox.showerror("Error", mensaje_pago)
-                return
-
-            #ahora guardo la reserva
             datos_reserva = [
-                habitacion[:3],
-                tipo_hab,
-                id_cliente,
-                nombre_cliente,
-                email_cliente,
-                fecha_entrada,
-                fecha_salida,
-                self.acompanantes.get() + 1,
-                id_pago,
-                pago_total,
-                self.notas.get().strip()
-            ]
+                    habitacion[:3],
+                    tipo_hab,
+                    id_cliente,
+                    nombre_cliente,
+                    email_cliente,
+                    fecha_entrada,
+                    fecha_salida,
+                    self.acompanantes.get() + 1,
+                    0,
+                    pago_total,
+                    self.notas.get().strip()
+                ]
+
+            print("DEBUG datos_reserva len:", len(datos_reserva))
+            print("DEBUG datos_reserva:", datos_reserva)
+
+            disponibles = []
+            for habitacion in basedatos.hab_disponibles(fecha_entrada=datos_reserva[5], fecha_salida=datos_reserva[6], tipo=datos_reserva[1]):
+                disponibles.append(habitacion[0])
+
+            print(f"Habitaciones disponibles: {disponibles}")
+
+            if datos_reserva[0] not in disponibles:
+                messagebox.showerror("Habitación no disponible",f"La habitación {datos_reserva[0]} no está disponible en estas fechas")
+                return
 
             reserva_guardada, mensaje_reserva = basedatos.guardar_reserva(tipo="agregar",datos=datos_reserva)
 
@@ -758,37 +686,9 @@ class GestorReservas(ctk.CTkFrame):
                 return
             
             messagebox.showinfo("Reserva guardada", "La reserva fue guardada exitosamente")
-            master.destroy()
             return
 
 
-        btn_frame = ctk.CTkFrame(master=frame_formulario, fg_color='transparent')
-        btn_frame.pack(fill ='x', expand = True)
-        obligatorio.lift(aboveThis=btn_frame)
-
-        btn_frame.columnconfigure(index=(0,1,2,3,4,5,6,7), weight = 1, uniform= 'z')
-
-        #boton cancelar
-        ctk.CTkButton(master = btn_frame,
-                      text='Cancelar',
-                      fg_color=PRIMARIO,
-                      hover_color=ROJO,
-                      text_color=BLANCO,
-                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
-                      corner_radius=10,
-                      command=master.destroy,
-                        ).grid(row = 6, column = 0, pady = 12)
-        
-        #boton confirmar reserva
-        ctk.CTkButton(master = btn_frame,
-                      text='✅ Pagar y Confirmar Reserva',
-                      fg_color=VERDE1,
-                      hover_color=VERDE2,
-                      text_color=BLANCO,
-                      font=(FUENTE, TAMANO_TEXTO_DEFAULT),
-                      corner_radius=10,
-                      command=guardar,
-                        ).grid(row = 6, column = 1, columnspan = 4,pady = 12)
 
     def buscar_disponibilidad(self):
         for widget in self.reservas.winfo_children():
@@ -902,7 +802,19 @@ class GestorReservas(ctk.CTkFrame):
             if not (fecha_entrada and fecha_salida):
                 return
 
-            hab_disp = basedatos.hab_disponibles(fecha_entrada=fecha_entrada, fecha_salida=fecha_salida, tipo=tipo_hab, capacidad_minima=capacidad)
+            try:
+                fe_ini_dt = datetime.strptime(fecha_entrada, '%d-%m-%Y')
+                fe_fin_dt = datetime.strptime(fecha_salida, '%d-%m-%Y')
+                fe_ini_iso = fe_ini_dt.date().isoformat()
+                fe_fin_iso = fe_fin_dt.date().isoformat()
+            except Exception as e:
+                print("DEBUG: error parseando fechas:", fecha_entrada, fecha_salida, e)
+                messagebox.showerror("Error", "Formato de fecha inválido. Use DD-MM-YYYY")
+                return
+
+            print("DEBUG llamar hab_disponibles con (ISO):", fe_ini_iso, fe_fin_iso, "tipo:", tipo_hab)
+            hab_disp = basedatos.hab_disponibles(fecha_entrada=fe_ini_iso, fecha_salida=fe_fin_iso, tipo=tipo_hab)
+
 
             cantidad=len(hab_disp)
 
@@ -1044,7 +956,7 @@ class GestorReservas(ctk.CTkFrame):
         self.contenedor_tabla.pack(fill='both', expand=True, padx = 12, pady = 12)
 
         reservas = RESERVAS()
-        data_tabla = [ENCABEZADOS_RESERVAS] + [r for r in reservas if r[8] in ('Pendiente', 'En curso')]
+        data_tabla = [ENCABEZADOS_RESERVAS] + [r for r in reservas if r[8] in ('Pendiente', 'En curso', 'checked-in')]
         self.tabla_reservas(data=data_tabla)
 
         btn_frame = ctk.CTkFrame(self.contenedor_tabla, fg_color="transparent")
@@ -1220,6 +1132,7 @@ class GestorReservas(ctk.CTkFrame):
                     'En curso': AZUL, 
                     'Pendiente': MAMEY, 
                     'Cancelada': ROJO,
+                    'checked-in': AZUL
                   }
 
         self.celdas = []
@@ -1260,7 +1173,7 @@ class GestorReservas(ctk.CTkFrame):
                       pila = ctk.CTkFrame(master=cont_pila, fg_color=colores[texto], corner_radius=15, height = 28)
                       pila.pack(fill = 'y')
 
-                      lbl = ctk.CTkLabel(master=pila, text=texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
+                      lbl = ctk.CTkLabel(master=pila, text='EN CURSO' if texto == 'checked-in' else texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
                       lbl.pack(expand = True, padx = 8, pady = 2)
 
                       if f > 0:
