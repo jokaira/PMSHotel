@@ -576,7 +576,6 @@ class FrontDeskApp(ctk.CTkFrame):
         ctk.CTkButton(frame, text="Confirmar Check-out Final", command=self.confirmar_checkout_gui, fg_color=VERDE1, text_color=BLANCO, height=35).grid(row=4, column=0, pady=10, padx=10, sticky='s')
 
     def cargar_checkouts(self):
-        
         conn = conectar_db()
         if not conn:
             messagebox.showerror("Error DB", "No se pudo conectar a la base de datos.")
@@ -643,13 +642,15 @@ class FrontDeskApp(ctk.CTkFrame):
 
     def extender_estadia_gui(self):
         if not self.selected_checkout:
-            messagebox.showwarning("Aviso","Seleccione una reserva.")
+            messagebox.showwarning("Aviso", "Seleccione una reserva.")
             return
+
         reserva_id = self.selected_checkout['id']
         nueva_salida_str = self.co_nueva_salida.get().strip()
         fecha_actual_salida_str = self.selected_checkout['fecha_salida']
         nueva_salida = validar_fecha(nueva_salida_str)
         fecha_actual_salida = validar_fecha(fecha_actual_salida_str)
+
         if not nueva_salida:
             messagebox.showerror("Error de Fecha", "Formato de fecha de salida inválido (YYYY-MM-DD).")
             return
@@ -659,14 +660,27 @@ class FrontDeskApp(ctk.CTkFrame):
         if nueva_salida <= fecha_actual_salida:
             messagebox.showerror("Error de Extensión", "La nueva fecha de salida debe ser posterior a la actual.")
             return
+
+        conn = None
         try:
-            extender_estadia(reserva_id, nueva_salida_str)
-            messagebox.showinfo("Éxito","Estadía extendida con éxito.")
+            conn = conectar_db()
+            if not conn:
+                raise Exception("No se pudo conectar a la base de datos.")
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE reservas
+                SET fecha_salida = ?
+                WHERE id = ?
+            """, (nueva_salida_str, reserva_id))
+            conn.commit()
+            messagebox.showinfo("Éxito", "Estadía extendida con éxito.")
             self.cargar_checkouts()
             self.selected_checkout = None
         except Exception as e:
             messagebox.showerror("Error de DB", f"No se pudo extender la estadía. Error: {e}")
-
+        finally:
+            if conn:
+                conn.close()
     def confirmar_checkout_gui(self):
         if not self.selected_checkout:
             messagebox.showwarning("Aviso","Seleccione una reserva.")
