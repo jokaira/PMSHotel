@@ -662,18 +662,28 @@ class FrontDeskApp(ctk.CTkFrame):
         if not self.selected_checkout:
             messagebox.showwarning("Aviso", "Seleccione una reserva.")
             return
+
+        # Validar el estado de la reserva
+        estado_reserva = self.selected_checkout['estado']
+        if estado_reserva != "checked-in":
+            messagebox.showwarning("Aviso", f"No se puede realizar Late Check-Out para reservas en estado: {estado_reserva}.")
+            return
+
         numero_hab = self.selected_checkout['numero_hab']
         conn = conectar_db()
         if not conn:
             messagebox.showerror("Error DB", "No se pudo conectar a la base de datos.")
             return
+
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) as cnt FROM reservas WHERE numero_hab=? AND fecha_entrada > ?", (numero_hab, date.today().isoformat()))
         r = cur.fetchone()
         conn.close()
+
         if r and r['cnt'] > 0:
-            messagebox.showerror("No disponible", "La habitación está reservada después; no se puede late check-out.")
+            messagebox.showerror("No disponible", "La habitación está reservada después; no se puede realizar Late Check-Out.")
             return
+
         try:
             monto_cargo = float(self.late_cargo.get())
             if monto_cargo <= 0:
@@ -681,8 +691,10 @@ class FrontDeskApp(ctk.CTkFrame):
         except Exception:
             messagebox.showerror("Error", "El cargo por Late Check-Out debe ser un número positivo.")
             return
+
         if not messagebox.askyesno("Late Check-Out", f"Reserva ID: {self.selected_checkout['id']}\nHabitación: {numero_hab}\nCargo: ${monto_cargo:,.2f}\n¿Confirmar?"):
             return
+
         try:
             registrar_late_checkout(self.selected_checkout['id'], monto_cargo)
             messagebox.showinfo("Éxito", "Late Check-Out registrado y cobrado.")
