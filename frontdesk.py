@@ -20,12 +20,13 @@ from basedatos import (validar_fecha,
     obtener_total_deuda,
     registrar_early_checkout as registrar_early_checkout_penalty,
     obtener_tipos_habitaciones,
+    obtener_walkins,
     conectar_bd as conectar_db
 )  
 
 # --- CONFIGURACIÓN ---
 script_dir = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(script_dir, "base_datos.db")
+DB_PATH = os.path.join(script_dir, "base_datos")
 CHECKIN_HOUR = 14
 EARLY_CHECKIN_PERCENT = 0.5
 
@@ -249,14 +250,17 @@ class FrontDeskApp(ctk.CTkFrame):
 
     # ---------------- Walk-in ----------------
     def crear_walkin(self):
+        for widget in self.tab_walkin.winfo_children():
+            widget.destroy()
+
         frame = ctk.CTkFrame(self.tab_walkin, fg_color=CLARO)
         frame.pack(pady=8, fill="both", expand=True)
         frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
-        frame.grid_rowconfigure(0, weight=1) # Allow cliente_frame to expand vertically
-        frame.grid_rowconfigure(1, weight=1) # Allow busqueda_frame to expand vertically
-        frame.grid_rowconfigure(2, weight=1) # Allow self.w_habitaciones_frame to expand vertically
-        frame.grid_rowconfigure(3, weight=1) # Allow self.w_monto_label to expand vertically
-        frame.grid_rowconfigure(4, weight=1) # Allow the final button to expand vertically
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_rowconfigure(1, weight=1)
+        frame.grid_rowconfigure(2, weight=1)
+        frame.grid_rowconfigure(3, weight=1)
+        frame.grid_rowconfigure(4, weight=1)
 
         # --- Sección de Datos del Cliente ---
         cliente_frame = ctk.CTkFrame(frame, fg_color='transparent')
@@ -271,7 +275,7 @@ class FrontDeskApp(ctk.CTkFrame):
         ctk.CTkLabel(cliente_frame, text="Email:", text_color=OSCURO).grid(row=1, column=2, padx=5, pady=6, sticky="w")
         self.w_email = ctk.CTkEntry(cliente_frame); self.w_email.grid(row=1, column=3, padx=(5,0), pady=6, sticky="ew")
 
-        # --- Sección de Búsqueda de Habitación ---
+    # --- Sección de Búsqueda de Habitación ---
         busqueda_frame = ctk.CTkFrame(frame, fg_color='transparent')
         busqueda_frame.grid(row=1, column=0, columnspan=4, sticky='nsew', padx=10, pady=10)
         busqueda_frame.grid_columnconfigure((1, 3), weight=1)
@@ -292,18 +296,114 @@ class FrontDeskApp(ctk.CTkFrame):
         
         ctk.CTkLabel(busqueda_frame, text="No. Personas:", text_color=OSCURO).grid(row=2, column=2, padx=5, pady=6, sticky="w")
         self.w_personas = ctk.CTkEntry(busqueda_frame); self.w_personas.grid(row=2, column=3, padx=(5,0), pady=6, sticky="ew")
-        
+    
         ctk.CTkButton(busqueda_frame, text="Buscar Habitaciones Disponibles", command=self.buscar_habitaciones_gui, fg_color=AZUL, text_color=BLANCO).grid(row=3, column=0, columnspan=4, pady=10)
 
-        # --- Resultados y Confirmación ---
+    # --- Resultados y Confirmación ---
         self.w_habitaciones_frame = ctk.CTkScrollableFrame(frame, fg_color=GRIS_CLARO3, corner_radius=6, height=80)
         self.w_habitaciones_frame.grid(row=2, column=0, columnspan=4, padx=10, pady=5, sticky="nsew")
         self.selected_habitacion = None
 
         self.w_monto_label = ctk.CTkLabel(frame, text="Monto Total Estimado: $0.00", text_color=OSCURO, font=(FUENTE, 13, 'bold'))
         self.w_monto_label.grid(row=3, column=0, columnspan=4, pady=6)
+
+    # --- Botones de Confirmar y Ver Historial ---
+        ctk.CTkButton(frame, text="Confirmar Walk-in", command=self.confirmar_walkin_gui, fg_color=VERDE1, text_color=BLANCO).grid(row=4, column=2, pady=10, padx=6, sticky='ew')
+        ctk.CTkButton(frame, text="Ver historial de Walk-ins", command=self.historial_walkin, fg_color=AZUL, text_color=BLANCO).grid(row=4, column=3, pady=10, padx=6, sticky='ew')
+
+
+    def historial_walkin(self):
+    # Limpia el frame principal de la pestaña walk-in
+        for widget in self.tab_walkin.winfo_children():
+            widget.destroy()
+
+    # Encabezado y estilo de botón activo
+        ctk.CTkLabel(self.tab_walkin, 
+                 text='📚 Historial de Walk-ins',
+                 text_color=PRIMARIO,
+                 font=(FUENTE, TAMANO_1, 'bold')
+                 ).pack(pady=6, padx=12, anchor='w')
+
+    # Frame para la tabla
+        contenedor_tabla = ctk.CTkFrame(self.tab_walkin, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
+        contenedor_tabla.pack(fill='both', expand=True, padx=12, pady=12)
+
+    # Encabezados
+        encabezados = ["ID", "Hab.", "Cliente", "Email", "Entrada", "Salida", "Personas", "Estado"]
+        data_tabla = [encabezados]
+
+    # Obtiene los walk-ins registrados
+        walkins = obtener_walkins()
+        for w in walkins:
+                fila = [w["id"], w["numero_hab"], w["cliente_nombre"], w["cliente_email"], w["fecha_entrada"], w["fecha_salida"], w["total_personas"], w["estado"]]
+                data_tabla.append(fila)
+        self.tabla_walkin(data=data_tabla, contenedor=contenedor_tabla)
         
-        ctk.CTkButton(frame, text="Confirmar Walk-in", command=self.confirmar_walkin_gui, fg_color=VERDE1, text_color=BLANCO).grid(row=4, column=0, columnspan=4, pady=10, padx=10, sticky='s')
+        ctk.CTkButton(self.tab_walkin, text="Volver atrás", command=self.crear_walkin, fg_color=ROJO, text_color=BLANCO).pack(pady=10)
+
+    # Muestra la tabla
+    def tabla_walkin(self, data, contenedor):
+    # Limpia el contenedor
+        for w in contenedor.winfo_children():
+            w.destroy()
+
+        frame = ctk.CTkScrollableFrame(master=contenedor, fg_color='transparent')
+        frame.pack(fill='both', expand=True, padx=12, pady=12)
+
+    # Colores para estados
+        colores = {
+            'Completada': VERDE1, 
+            'En curso': AZUL, 
+            'Pendiente': MAMEY, 
+            'Cancelada': ROJO,
+        }
+
+        self.celdas_walkin = []
+        for f, fila in enumerate(data):
+            fila_widgets = []
+            for c, texto in enumerate(fila):
+            # Coloreado de las líneas
+                if f == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                elif f % 2 == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+                else:
+                    bg = GRIS_CLARO4
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+
+            # Resaltado de estado con "pilas"
+                if texto in colores:
+                    cont_pila = ctk.CTkFrame(master=frame, fg_color=bg, corner_radius=0)
+                    cont_pila.grid(row=f*2, column=c, sticky='nsew', padx=1, pady=1)
+
+                    pila = ctk.CTkFrame(master=cont_pila, fg_color=colores[texto], corner_radius=15, height=28)
+                    pila.pack(fill='y')
+
+                    lbl = ctk.CTkLabel(master=pila, text=texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
+                    lbl.pack(expand=True, padx=8, pady=2)
+
+                    widget_celda = (lbl, True)
+                else:
+                    lbl = ctk.CTkLabel(frame, text=texto, anchor='center', width=140, height=28, fg_color=bg, text_color=fg, font=font)
+                    lbl.grid(row=f*2, column=c, sticky='nsew', padx=1, pady=1)
+                    widget_celda = (lbl, False)
+            
+                frame.grid_columnconfigure(c, weight=1)
+
+            # Borde encabezado
+                if f == 0:
+                    borde = ctk.CTkFrame(master=frame, fg_color=GRIS)
+                    borde.grid(row=f*2+1, column=c, sticky='ew')
+                    borde.grid_propagate(False)
+                    borde.configure(height=2)
+
+                fila_widgets.append(widget_celda)
+            self.celdas_walkin.append(fila_widgets)
 
     def buscar_habitaciones_gui(self):
         f_entrada_str = self.w_fecha_entrada.get()
@@ -832,6 +932,9 @@ class ModalCobro(ctk.CTkToplevel):
         self.tasa_entry.grid(row=3, column=1, sticky="ew")
         self.tasa_entry.bind("<KeyRelease>", self.actualizar_monto_equivalente)
 
+        # Label para la fuente de la tasa
+        self.tasa_fuente_label = ctk.CTkLabel(main_frame, text="Fuente: Manual", text_color=GRIS)
+        self.tasa_fuente_label.grid(row=3, column=2, padx=10, sticky="w")
         # --- Monto Equivalente ---
         ctk.CTkLabel(main_frame, text="Monto equivalente", text_color=OSCURO).grid(row=4, column=0, padx=(0, 10), pady=10, sticky="w")
         self.monto_equivalente_entry = ctk.CTkEntry(main_frame, state="readonly")
