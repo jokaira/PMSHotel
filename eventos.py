@@ -90,34 +90,6 @@ class CotizacionEventos(ctk.CTkFrame):
         self.hora_fin_m_var = tk.StringVar(value='--')
         self.hora_fin_ampm_var = ctk.StringVar(value='AM')
 
-        # helper to compose HH:MM into the existing hora_inicio_var / hora_fin_var
-        # now accepts 12-hour inputs plus AM/PM and converts to 24-hour 'HH:MM'
-        def _compose_time(kind):
-            if kind == 'inicio':
-                h = self.hora_inicio_h_var.get()
-                m = self.hora_inicio_m_var.get()
-                ampm = self.hora_inicio_ampm_var.get() if getattr(self, 'hora_inicio_ampm_var', None) else 'AM'
-                target = self.hora_inicio_var
-            else:
-                h = self.hora_fin_h_var.get()
-                m = self.hora_fin_m_var.get()
-                ampm = self.hora_fin_ampm_var.get() if getattr(self, 'hora_fin_ampm_var', None) else 'AM'
-                target = self.hora_fin_var
-            if not h or not m or h == '--' or m == '--':
-                target.set('--')
-            else:
-                # convert 12h + AM/PM to 24h
-                try:
-                    hh = int(h)
-                    mm = int(m)
-                    if ampm.upper() == 'PM' and hh < 12:
-                        hh = hh + 12
-                    if ampm.upper() == 'AM' and hh == 12:
-                        hh = 0
-                    target.set(f"{hh:02d}:{mm:02d}")
-                except Exception:
-                    target.set('--')
-
         # hour values for 12-hour clock: include '--' + 01..12
         hour_values = ['--'] + [f"{h:02d}" for h in range(1,13)]
         # minute values: include '--' + common 15-min increments
@@ -127,8 +99,8 @@ class CotizacionEventos(ctk.CTkFrame):
         start_frame = ctk.CTkFrame(time_container, fg_color='transparent')
         start_frame.pack(side='left', padx=(0,6))
         # aumentar tamaño visual y permitir escritura manual (font y ipady para mayor altura)
-        tk.Spinbox(start_frame, values=hour_values, textvariable=self.hora_inicio_h_var, width=10, wrap=True, justify='center', font=(FUENTE, 12), command=lambda: _compose_time('inicio')).pack(side='left', ipady=4)
-        tk.Spinbox(start_frame, values=minute_values, textvariable=self.hora_inicio_m_var, width=10, wrap=True, justify='center', font=(FUENTE, 12), command=lambda: _compose_time('inicio')).pack(side='left', padx=(6,0), ipady=4)
+        tk.Spinbox(start_frame, values=hour_values, textvariable=self.hora_inicio_h_var, width=10, wrap=True, justify='center', font=(FUENTE, 12), command=lambda: self._compose_time('inicio')).pack(side='left', ipady=4)
+        tk.Spinbox(start_frame, values=minute_values, textvariable=self.hora_inicio_m_var, width=10, wrap=True, justify='center', font=(FUENTE, 12), command=lambda: self._compose_time('inicio')).pack(side='left', padx=(6,0), ipady=4)
         # AM/PM selector
         ctk.CTkOptionMenu(start_frame, values=['AM', 'PM'], variable=self.hora_inicio_ampm_var, width=70).pack(side='left', padx=(8,0))
 
@@ -137,19 +109,19 @@ class CotizacionEventos(ctk.CTkFrame):
         # End time spinboxes
         end_frame = ctk.CTkFrame(time_container, fg_color='transparent')
         end_frame.pack(side='left', padx=(6,0))
-        tk.Spinbox(end_frame, values=hour_values, textvariable=self.hora_fin_h_var, width=10, wrap=True, justify='center', font=(FUENTE, 12), command=lambda: _compose_time('fin')).pack(side='left', ipady=4)
-        tk.Spinbox(end_frame, values=minute_values, textvariable=self.hora_fin_m_var, width=10, wrap=True, justify='center', font=(FUENTE, 12), command=lambda: _compose_time('fin')).pack(side='left', padx=(6,0), ipady=4)
+        tk.Spinbox(end_frame, values=hour_values, textvariable=self.hora_fin_h_var, width=10, wrap=True, justify='center', font=(FUENTE, 12), command=lambda: self._compose_time('fin')).pack(side='left', ipady=4)
+        tk.Spinbox(end_frame, values=minute_values, textvariable=self.hora_fin_m_var, width=10, wrap=True, justify='center', font=(FUENTE, 12), command=lambda: self._compose_time('fin')).pack(side='left', padx=(6,0), ipady=4)
         # AM/PM selector
         ctk.CTkOptionMenu(end_frame, values=['AM', 'PM'], variable=self.hora_fin_ampm_var, width=70).pack(side='left', padx=(8,0))
 
         # also update composed vars when underlying StringVars change (covers programmatic sets)
         try:
-            self.hora_inicio_h_var.trace('w', lambda *args: _compose_time('inicio'))
-            self.hora_inicio_m_var.trace('w', lambda *args: _compose_time('inicio'))
-            self.hora_inicio_ampm_var.trace('w', lambda *args: _compose_time('inicio'))
-            self.hora_fin_h_var.trace('w', lambda *args: _compose_time('fin'))
-            self.hora_fin_m_var.trace('w', lambda *args: _compose_time('fin'))
-            self.hora_fin_ampm_var.trace('w', lambda *args: _compose_time('fin'))
+            self._trace_id_inicio_h = self.hora_inicio_h_var.trace('w', lambda *args: self._compose_time('inicio'))
+            self._trace_id_inicio_m = self.hora_inicio_m_var.trace('w', lambda *args: self._compose_time('inicio'))
+            self._trace_id_inicio_ampm = self.hora_inicio_ampm_var.trace('w', lambda *args: self._compose_time('inicio'))
+            self._trace_id_fin_h = self.hora_fin_h_var.trace('w', lambda *args: self._compose_time('fin'))
+            self._trace_id_fin_m = self.hora_fin_m_var.trace('w', lambda *args: self._compose_time('fin'))
+            self._trace_id_fin_ampm = self.hora_fin_ampm_var.trace('w', lambda *args: self._compose_time('fin'))
         except Exception:
             # ctk.StringVar may not support trace in some versions; fall back to no-op
             pass
@@ -700,8 +672,95 @@ class CotizacionEventos(ctk.CTkFrame):
             btn_eliminar = ctk.CTkButton(self.tabla_frame, text='Eliminar', fg_color=ROJO, width=70, command=lambda id_=id_: self.eliminar_cotizacion(id_))
             btn_eliminar.grid(row=i, column=7, padx=4, pady=6, sticky='nsew')
 
+    def _decompose_time_to_spinboxes(self, time_24h, kind):
+        """Descompone una hora en formato 24h (HH:MM) a formato 12h y actualiza los spinboxes.
+        kind: 'inicio' o 'fin'
+        """
+        if not time_24h or time_24h == '--' or not isinstance(time_24h, str):
+            # Reset to default
+            if kind == 'inicio':
+                self.hora_inicio_h_var.set('--')
+                self.hora_inicio_m_var.set('--')
+                self.hora_inicio_ampm_var.set('AM')
+            else:
+                self.hora_fin_h_var.set('--')
+                self.hora_fin_m_var.set('--')
+                self.hora_fin_ampm_var.set('AM')
+            return
+        
+        try:
+            # Parse HH:MM format
+            parts = time_24h.strip().split(':')
+            if len(parts) < 2:
+                return
+            hh = int(parts[0])
+            mm = int(parts[1])
+            
+            # Convert 24h to 12h + AM/PM
+            if hh == 0:
+                hh_12 = 12
+                ampm = 'AM'
+            elif hh < 12:
+                hh_12 = hh
+                ampm = 'AM'
+            elif hh == 12:
+                hh_12 = 12
+                ampm = 'PM'
+            else:
+                hh_12 = hh - 12
+                ampm = 'PM'
+            
+            # Update spinboxes directly - the traces will automatically update hora_inicio_var/hora_fin_var
+            if kind == 'inicio':
+                self.hora_inicio_h_var.set(f"{hh_12:02d}")
+                self.hora_inicio_m_var.set(f"{mm:02d}")
+                self.hora_inicio_ampm_var.set(ampm)
+            else:
+                self.hora_fin_h_var.set(f"{hh_12:02d}")
+                self.hora_fin_m_var.set(f"{mm:02d}")
+                self.hora_fin_ampm_var.set(ampm)
+        except Exception:
+            # On error, reset to default
+            if kind == 'inicio':
+                self.hora_inicio_h_var.set('--')
+                self.hora_inicio_m_var.set('--')
+                self.hora_inicio_ampm_var.set('AM')
+            else:
+                self.hora_fin_h_var.set('--')
+                self.hora_fin_m_var.set('--')
+                self.hora_fin_ampm_var.set('AM')
+
+    def _compose_time(self, kind):
+        """Helper para componer hora desde spinboxes a formato 24h."""
+        if kind == 'inicio':
+            h = self.hora_inicio_h_var.get()
+            m = self.hora_inicio_m_var.get()
+            ampm = self.hora_inicio_ampm_var.get() if getattr(self, 'hora_inicio_ampm_var', None) else 'AM'
+            target = self.hora_inicio_var
+        else:
+            h = self.hora_fin_h_var.get()
+            m = self.hora_fin_m_var.get()
+            ampm = self.hora_fin_ampm_var.get() if getattr(self, 'hora_fin_ampm_var', None) else 'AM'
+            target = self.hora_fin_var
+        if not h or not m or h == '--' or m == '--':
+            target.set('--')
+        else:
+            # convert 12h + AM/PM to 24h
+            try:
+                hh = int(h)
+                mm = int(m)
+                if ampm.upper() == 'PM' and hh < 12:
+                    hh = hh + 12
+                if ampm.upper() == 'AM' and hh == 12:
+                    hh = 0
+                target.set(f"{hh:02d}:{mm:02d}")
+            except Exception:
+                target.set('--')
+
     def seleccionar_cotizacion(self, id_):
         eventos = basedatos.obtener_cotizaciones_eventos() if hasattr(basedatos, 'obtener_cotizaciones_eventos') else []
+        cols = basedatos.obtener_columnas_eventos() if hasattr(basedatos, 'obtener_columnas_eventos') else []
+        
         registro = None
         for ev in eventos:
             if ev[0] == id_:
@@ -711,46 +770,95 @@ class CotizacionEventos(ctk.CTkFrame):
             messagebox.showerror('Error', 'No se encontró la cotización seleccionada')
             return
 
-        # DB schema may include mesas_csv, asientos_totales, costo_mesas at the end
-        id_ = registro[0]
-        tipo = registro[1] if len(registro) > 1 else ''
-        salon = registro[2] if len(registro) > 2 else ''
-        fecha = registro[3] if len(registro) > 3 else ''
-        hora = registro[4] if len(registro) > 4 else ''
-        hora_inicio_reg = registro[15] if len(registro) > 15 else None
-        hora_fin_reg = registro[16] if len(registro) > 16 else None
-        equipamiento = registro[5] if len(registro) > 5 else ''
-        categoria = registro[6] if len(registro) > 6 else ''
-        personas = registro[7] if len(registro) > 7 else 0
-        tarifa = registro[8] if len(registro) > 8 else 0.0
-        total = registro[9] if len(registro) > 9 else 0.0
-        fecha_creacion = registro[10] if len(registro) > 10 else ''
-        notas = registro[11] if len(registro) > 11 else ''
-        mesas_csv = registro[12] if len(registro) > 12 else ''
-        asientos_totales = registro[13] if len(registro) > 13 else 0
-        costo_mesas = registro[14] if len(registro) > 14 else 0.0
+        # Helper para obtener índice de columna
+        def idx(name):
+            try:
+                if name in cols:
+                    return cols.index(name)
+                return None
+            except Exception:
+                return None
+
+        # Obtener índices de columnas dinámicamente
+        idx_id = idx('id') if idx('id') is not None else 0
+        idx_tipo = idx('tipo') if idx('tipo') is not None else 1
+        idx_salon = idx('salon') if idx('salon') is not None else 2
+        idx_fecha = idx('fecha') if idx('fecha') is not None else 3
+        idx_hora = idx('hora') if idx('hora') is not None else 4
+        idx_equipamiento = idx('equipamiento') if idx('equipamiento') is not None else 5
+        idx_categoria = idx('categoria') if idx('categoria') is not None else 6
+        idx_personas = idx('personas') if idx('personas') is not None else 7
+        idx_tarifa = idx('tarifa_salon') if idx('tarifa_salon') is not None else 8
+        idx_total = idx('total') if idx('total') is not None else 9
+        idx_fecha_creacion = idx('fecha_creacion') if idx('fecha_creacion') is not None else 10
+        idx_notas = idx('notas') if idx('notas') is not None else 11
+        idx_mesas_csv = idx('mesas_csv')
+        idx_asientos = idx('asientos_totales')
+        idx_costo_mesas = idx('costo_mesas')
+        idx_hora_inicio = idx('hora_inicio')
+        idx_hora_fin = idx('hora_fin')
+
+        # Extraer valores usando índices dinámicos
+        id_ = registro[idx_id] if idx_id is not None and len(registro) > idx_id else registro[0]
+        tipo = registro[idx_tipo] if idx_tipo is not None and len(registro) > idx_tipo else ''
+        salon = registro[idx_salon] if idx_salon is not None and len(registro) > idx_salon else ''
+        fecha = registro[idx_fecha] if idx_fecha is not None and len(registro) > idx_fecha else ''
+        hora = registro[idx_hora] if idx_hora is not None and len(registro) > idx_hora else ''
+        hora_inicio_reg = registro[idx_hora_inicio] if idx_hora_inicio is not None and len(registro) > idx_hora_inicio else None
+        hora_fin_reg = registro[idx_hora_fin] if idx_hora_fin is not None and len(registro) > idx_hora_fin else None
+        equipamiento = registro[idx_equipamiento] if idx_equipamiento is not None and len(registro) > idx_equipamiento else ''
+        categoria = registro[idx_categoria] if idx_categoria is not None and len(registro) > idx_categoria else ''
+        personas = registro[idx_personas] if idx_personas is not None and len(registro) > idx_personas else 0
+        tarifa = registro[idx_tarifa] if idx_tarifa is not None and len(registro) > idx_tarifa else 0.0
+        total = registro[idx_total] if idx_total is not None and len(registro) > idx_total else 0.0
+        fecha_creacion = registro[idx_fecha_creacion] if idx_fecha_creacion is not None and len(registro) > idx_fecha_creacion else ''
+        notas = registro[idx_notas] if idx_notas is not None and len(registro) > idx_notas else ''
+        # Obtener mesas_csv solo si la columna existe
+        mesas_csv = ''
+        if idx_mesas_csv is not None:
+            try:
+                if len(registro) > idx_mesas_csv:
+                    valor = registro[idx_mesas_csv]
+                    if valor is not None:
+                        mesas_csv = str(valor).strip()
+            except (IndexError, TypeError):
+                mesas_csv = ''
+        asientos_totales = registro[idx_asientos] if idx_asientos is not None and len(registro) > idx_asientos else 0
+        costo_mesas = registro[idx_costo_mesas] if idx_costo_mesas is not None and len(registro) > idx_costo_mesas else 0.0
 
         self.cotizacion_seleccionada.set(id_)
         self.tipo_var.set(tipo)
         self.salon_var.set(salon)
         self.fecha_var.set(fecha)
-        # prefer explicit hora_inicio/hora_fin if available in DB
+        
+        # Cargar horas: preferir hora_inicio/hora_fin explícitas, luego fallback a campo 'hora' legacy
+        hora_inicio_val = None
+        hora_fin_val = None
+        
         if hora_inicio_reg is not None or hora_fin_reg is not None:
-            self.hora_inicio_var.set(hora_inicio_reg if hora_inicio_reg else '--')
-            self.hora_fin_var.set(hora_fin_reg if hora_fin_reg else '--')
+            hora_inicio_val = hora_inicio_reg if hora_inicio_reg else None
+            hora_fin_val = hora_fin_reg if hora_fin_reg else None
         else:
             # fallback: parse legacy single 'hora' field which may contain a range like '08:00 - 10:00'
             try:
                 if hora and isinstance(hora, str) and '-' in hora:
                     a, b = [p.strip() for p in hora.split('-', 1)]
-                    self.hora_inicio_var.set(a if a else '--')
-                    self.hora_fin_var.set(b if b else '--')
+                    hora_inicio_val = a if a else None
+                    hora_fin_val = b if b else None
                 else:
-                    self.hora_inicio_var.set(hora if hora else '--')
-                    self.hora_fin_var.set('--')
+                    hora_inicio_val = hora if hora else None
+                    hora_fin_val = None
             except Exception:
-                self.hora_inicio_var.set('--')
-                self.hora_fin_var.set('--')
+                hora_inicio_val = None
+                hora_fin_val = None
+        
+        # Actualizar variables de hora compuestas
+        self.hora_inicio_var.set(hora_inicio_val if hora_inicio_val else '--')
+        self.hora_fin_var.set(hora_fin_val if hora_fin_val else '--')
+        
+        # IMPORTANTE: Actualizar los spinboxes con los valores descompuestos
+        self._decompose_time_to_spinboxes(hora_inicio_val, 'inicio')
+        self._decompose_time_to_spinboxes(hora_fin_val, 'fin')
         # Si en la BD viene un string con varios items, tomamos el primero para el dropdown
         if equipamiento:
             # load CSV into selected_equip list and update display
@@ -771,25 +879,30 @@ class CotizacionEventos(ctk.CTkFrame):
         if notas:
             self.notas_textbox.insert('0.0', notas)
         # load mesas from CSV if present
-        try:
-            self.tables_selected = {'4':0,'8':0,'12':0}
+        self.tables_selected = {'4': 0, '8': 0, '12': 0}
+        if mesas_csv:
+            mesas_csv = str(mesas_csv).strip()
             if mesas_csv:
-                parts = [p.strip() for p in str(mesas_csv).split(',') if p.strip()]
-                for p in parts:
-                    if ':' in p:
-                        k, v = p.split(':', 1)
-                        try:
-                            self.tables_selected[k] = int(v)
-                        except Exception:
-                            self.tables_selected[k] = 0
-            # update display: show simple legend when any selection exists
-            any_selected = any(int(self.tables_selected.get(k, 0)) > 0 for k in ('4', '8', '12'))
-            if any_selected:
-                self.tables_display_var.set('Cambiar seleccion')
-            else:
-                self.tables_display_var.set('Seleccionar mesas...')
-        except Exception:
-            pass
+                try:
+                    parts = [p.strip() for p in mesas_csv.split(',') if p.strip()]
+                    for p in parts:
+                        if ':' in p:
+                            k, v = p.split(':', 1)
+                            k = k.strip()
+                            v = v.strip()
+                            if k in ('4', '8', '12') and v:
+                                try:
+                                    self.tables_selected[k] = int(v)
+                                except (ValueError, TypeError):
+                                    pass
+                except Exception:
+                    pass
+        # update display
+        any_selected = any(int(self.tables_selected.get(k, 0)) > 0 for k in ('4', '8', '12'))
+        if any_selected:
+            self.tables_display_var.set('Cambiar seleccion')
+        else:
+            self.tables_display_var.set('Seleccionar mesas...')
         self.actualizar_total()
         if self.btn_guardar:
             self.btn_guardar.configure(text='🔄 Actualizar')
@@ -1083,36 +1196,113 @@ class CotizacionEventos(ctk.CTkFrame):
             except Exception:
                 catering_rate_pdf = 0.0
             subtotal_catering_pdf = catering_rate_pdf * personas_pdf
-            # parse mesas info if present (indices may vary depending on DB schema)
-            mesas_csv = cot[12] if len(cot) > 12 else ''
-            asientos_totales_pdf = cot[13] if len(cot) > 13 else 0
-            costo_mesas_pdf = cot[14] if len(cot) > 14 else 0.0
+            # Obtener índices de columnas dinámicamente
+            cols = basedatos.obtener_columnas_eventos() if hasattr(basedatos, 'obtener_columnas_eventos') else []
+            def idx(name):
+                try:
+                    if name in cols:
+                        return cols.index(name)
+                    return None
+                except Exception:
+                    return None
+            
+            idx_mesas_csv = idx('mesas_csv')
+            idx_asientos = idx('asientos_totales')
+            idx_costo_mesas = idx('costo_mesas')
+            idx_hora_inicio = idx('hora_inicio')
+            idx_hora_fin = idx('hora_fin')
+            
+            # Obtener horas
+            hora_inicio_pdf = None
+            hora_fin_pdf = None
+            if idx_hora_inicio is not None and len(cot) > idx_hora_inicio:
+                hora_inicio_pdf = cot[idx_hora_inicio] if cot[idx_hora_inicio] is not None else None
+            if idx_hora_fin is not None and len(cot) > idx_hora_fin:
+                hora_fin_pdf = cot[idx_hora_fin] if cot[idx_hora_fin] is not None else None
+            
+            # Función para convertir hora 24h a 12h con AM/PM
+            def convertir_a_12h(hora_24h):
+                if not hora_24h or hora_24h == '--' or not isinstance(hora_24h, str):
+                    return ''
+                try:
+                    parts = hora_24h.strip().split(':')
+                    if len(parts) < 2:
+                        return hora_24h
+                    hh = int(parts[0])
+                    mm = int(parts[1])
+                    
+                    if hh == 0:
+                        return f"12:{mm:02d} AM"
+                    elif hh < 12:
+                        return f"{hh}:{mm:02d} AM"
+                    elif hh == 12:
+                        return f"12:{mm:02d} PM"
+                    else:
+                        return f"{hh-12}:{mm:02d} PM"
+                except Exception:
+                    return hora_24h
+            
+            # Formatear hora para el PDF
+            hora_display = ''
+            if hora_inicio_pdf or hora_fin_pdf:
+                inicio_12h = convertir_a_12h(hora_inicio_pdf) if hora_inicio_pdf else ''
+                fin_12h = convertir_a_12h(hora_fin_pdf) if hora_fin_pdf else ''
+                if inicio_12h and fin_12h:
+                    hora_display = f"{inicio_12h} - {fin_12h}"
+                elif inicio_12h:
+                    hora_display = inicio_12h
+                elif fin_12h:
+                    hora_display = fin_12h
+            else:
+                # Fallback al campo legacy 'hora'
+                hora_legacy = cot[4] if len(cot) > 4 else ''
+                if hora_legacy and isinstance(hora_legacy, str) and '-' in hora_legacy:
+                    # Intentar parsear formato legacy "HH:MM - HH:MM"
+                    try:
+                        a, b = [p.strip() for p in hora_legacy.split('-', 1)]
+                        inicio_12h = convertir_a_12h(a) if a else ''
+                        fin_12h = convertir_a_12h(b) if b else ''
+                        if inicio_12h and fin_12h:
+                            hora_display = f"{inicio_12h} - {fin_12h}"
+                        else:
+                            hora_display = hora_legacy
+                    except Exception:
+                        hora_display = hora_legacy
+                else:
+                    hora_display = convertir_a_12h(hora_legacy) if hora_legacy else ''
+            
+            # parse mesas info if present
+            mesas_csv = ''
+            if idx_mesas_csv is not None and len(cot) > idx_mesas_csv:
+                valor = cot[idx_mesas_csv]
+                if valor is not None:
+                    mesas_csv = str(valor).strip()
+            asientos_totales_pdf = cot[idx_asientos] if idx_asientos is not None and len(cot) > idx_asientos else 0
+            costo_mesas_pdf = cot[idx_costo_mesas] if idx_costo_mesas is not None and len(cot) > idx_costo_mesas else 0.0
 
-            # build mesas breakdown lines
+            # build mesas breakdown lines - solo cantidad y capacidad
             mesas_lines = []
-            try:
-                from settings import TABLE_FEES
-            except Exception:
-                TABLE_FEES = {'4':5.0,'8':8.0,'12':12.0}
             if mesas_csv:
-                parts = [p.strip() for p in str(mesas_csv).split(',') if p.strip()]
+                parts = [p.strip() for p in mesas_csv.split(',') if p.strip()]
                 for p in parts:
                     if ':' in p:
                         k, v = p.split(':', 1)
+                        k = k.strip()
+                        v = v.strip()
                         try:
                             cnt = int(v)
-                        except Exception:
-                            cnt = 0
-                        fee = TABLE_FEES.get(k, 0.0)
-                        line_total = fee * cnt
-                        mesas_lines.append((f'Mesas {k}p', f'{cnt} x ${fee:,.2f} = ${line_total:,.2f}'))
+                            if cnt > 0:
+                                # Mostrar solo cantidad y capacidad: "X mesas de Y personas"
+                                mesas_lines.append((f'Mesas {k} personas', f'{cnt} mesa{"s" if cnt > 1 else ""}'))
+                        except (ValueError, TypeError):
+                            pass
 
             rows = [
                 ('ID', cot[0]),
                 ('Tipo', cot[1]),
                 ('Salón', cot[2]),
                 ('Fecha', cot[3]),
-                ('Hora', cot[4]),
+                ('Horario', hora_display),
                 ('Equipamiento', cot[5] if cot[5] is not None else ''),
                 # Mostrar Personas, luego tarifa por persona, luego el subtotal de catering
                 ('Personas', cot[7]),
@@ -1121,13 +1311,9 @@ class CotizacionEventos(ctk.CTkFrame):
                 ('Catering', f"${subtotal_catering_pdf:,.2f}"),
             ]
 
-            # append mesas breakdown (each table type) then a costo mesas and asiento total
+            # append mesas breakdown (solo cantidad y capacidad)
             for label, valor in mesas_lines:
                 rows.append((label, valor))
-            if costo_mesas_pdf and costo_mesas_pdf != 0.0:
-                rows.append(('Costo mesas', f'${costo_mesas_pdf:,.2f}'))
-            if asientos_totales_pdf and asientos_totales_pdf != 0:
-                rows.append(('Asientos totales', str(asientos_totales_pdf)))
 
             # continue with remaining rows
             rows.extend([
