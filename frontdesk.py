@@ -54,7 +54,7 @@ class FrontDeskApp(ctk.CTkFrame):
         self.crear_walkin()
         self.crear_checkout()
         self.actualizar_dashboard()
-
+        
     # ---------------- Dashboard ----------------
     def crear_dashboard(self):
         self.dashboard_frame = ctk.CTkFrame(self, fg_color='transparent')
@@ -250,6 +250,24 @@ class FrontDeskApp(ctk.CTkFrame):
 
     # ---------------- Walk-in ----------------
     def crear_walkin(self):
+        conn = conectar_db()
+        if not conn:
+            messagebox.showerror("Error DB", "No se pudo conectar a la base de datos.")
+            return
+        cur = conn.cursor()
+        try:
+            hoy = date.today().isoformat()
+            cur.execute("""
+                UPDATE walk_ins
+                SET estado = 'Completada', checked_out = 1
+                WHERE fecha_salida <= ? AND estado = 'En curso'
+            """, (hoy,))
+            conn.commit()
+        except Exception as e:
+            print(f"Error al actualizar estados de Walk-ins: {e}")
+        finally:
+            conn.close()
+
         for widget in self.tab_walkin.winfo_children():
             widget.destroy()
 
@@ -494,7 +512,8 @@ class FrontDeskApp(ctk.CTkFrame):
         except Exception as e:
             messagebox.showerror("Error de DB", f"No se pudo registrar el Walk-in. Error: {e}")
 
-    # ---------------- Check-out ----------------
+    
+        # ---------------- Check-out ----------------
     def crear_checkout(self):
         frame = ctk.CTkFrame(self.tab_checkout, fg_color=CLARO)
         frame.pack(pady=8, fill="both", expand=True)
@@ -557,36 +576,52 @@ class FrontDeskApp(ctk.CTkFrame):
         ctk.CTkButton(frame, text="Confirmar Check-out Final", command=self.confirmar_checkout_gui, fg_color=VERDE1, text_color=BLANCO, height=35).grid(row=4, column=0, pady=10, padx=10, sticky='s')
 
     def cargar_checkouts(self):
+        
         conn = conectar_db()
         if not conn:
             messagebox.showerror("Error DB", "No se pudo conectar a la base de datos.")
             return
-        hoy = date.today().isoformat()
+
         cur = conn.cursor()
         try:
+            # Consulta para las reservas en estado "checked-in"
             cur.execute("""
                 SELECT r.id, c.nombres || ' ' || c.apellidos as cliente_nombre, r.numero_hab,
-                       r.fecha_entrada, r.fecha_salida, r.monto_pago, r.estado
+                    r.fecha_entrada, r.fecha_salida, r.monto_pago, r.estado
                 FROM reservas r
                 JOIN clientes c ON r.id_cliente = c.id
-                WHERE r.estado='checked-in' AND r.fecha_salida <= ?
-            """, (hoy,))
-            resultados = [dict(row) for row in cur.fetchall()]
+                WHERE r.estado='checked-in'
+            """)
+            reservas = [dict(row) for row in cur.fetchall()]
+
+            # Consulta para los Walk-ins en estado "checked-in"
+            cur.execute("""
+                SELECT w.id, w.cliente_nombre, w.numero_hab,
+                    w.fecha_entrada, w.fecha_salida, w.estado
+                FROM walk_ins w
+                WHERE w.checked_in=1 AND w.checked_out=0
+            """)
+            walkins = [dict(row) for row in cur.fetchall()]
+
+            # Combinar resultados
+            resultados = reservas + walkins
+
             if not resultados:
-                messagebox.showinfo("Sin resultados", "No hay reservas en estado 'checked-in' con fecha de salida hoy o anterior.")
+                messagebox.showinfo("Sin resultados", "No hay registros activos para Check-out.")
         except Exception as e:
-            messagebox.showerror("Error de Base de Datos", f"Error al cargar check-outs: {e}")
+            messagebox.showerror("Error de Base de Datos", f"Error al cargar Check-outs: {e}")
             resultados = []
         finally:
             conn.close()
 
+        # Mostrar resultados en la interfaz
         headers = {
             'id': 'ID', 'cliente_nombre': 'Cliente', 'numero_hab': 'Hab.',
             'fecha_entrada': 'Entrada', 'fecha_salida': 'Salida',
             'monto_pago': 'Monto', 'estado': 'Estado'
         }
         self._update_results_grid(self.co_resultados, resultados, headers, 'checkout')
-
+                
     def abrir_modal_cargos_adicionales(self):
         if not self.selected_checkout:
             messagebox.showwarning("Aviso", "Seleccione una reserva en Check-out para agregar cargos.")
@@ -725,14 +760,14 @@ class FrontDeskApp(ctk.CTkFrame):
         ModalEarlyCheckout(self.master, reserva_id, fecha_salida_programada, self._callback_early_checkout)
 
     def _callback_early_checkout(self, reserva_id, motivo_salida):
-        conn = None # Initialize conn to None
+        conn = None
         try:
             conn = conectar_db()
             if not conn:
                 raise Exception("No se pudo conectar a la base de datos.")
             cur = conn.cursor()
             
-            # Get reservation details
+        # Obtener detalles de la reserva
             cur.execute("SELECT fecha_entrada, fecha_salida, monto_pago, numero_hab FROM reservas WHERE id=?", (reserva_id,))
             reserva_data = cur.fetchone()
             
@@ -751,7 +786,7 @@ class FrontDeskApp(ctk.CTkFrame):
             dias_restantes = (fecha_salida_programada - date.today()).days
 
             if dias_totales <= 0:
-                precio_noche = 0 # Avoid division by zero if reservation is for 0 or negative days
+                precio_noche = 0  # Evitar división por cero si la reserva tiene 0 o días negativos
             else:
                 precio_noche = monto_total_reserva / dias_totales
 
@@ -759,12 +794,12 @@ class FrontDeskApp(ctk.CTkFrame):
             if dias_restantes > 0:
                 penalizacion = round(precio_noche * dias_restantes * EARLY_CHECKOUT_PENALTY_PERCENT, 2)
 
-            # Update reservation status and room status
+            # Actualizar estado de la reserva y habitación
             cur.execute("UPDATE reservas SET estado='Completada', checked_out=1, notas=? WHERE id=?", (motivo_salida, reserva_id))
             cur.execute("UPDATE habitaciones SET estado='Sucia' WHERE numero=?", (numero_hab,))
             cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo, notas) VALUES (?, 'checkout_anticipado', ?)", (reserva_id, motivo_salida))
             
-            # Add penalty as an additional charge if applicable
+            # Registrar penalización como ingreso adicional
             if penalizacion > 0:
                 cur.execute("""
                     INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago, notas)
@@ -782,8 +817,7 @@ class FrontDeskApp(ctk.CTkFrame):
         finally:
             if conn:
                 conn.close()
-
-# ==========================
+    # ==========================
 # ModalCargosAdicionales
 # ==========================
 class ModalCargosAdicionales(ctk.CTkToplevel):

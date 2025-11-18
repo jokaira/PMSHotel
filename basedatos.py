@@ -2274,6 +2274,25 @@ def registrar_walkin(nombre, email, f_entrada, f_salida, personas, monto, num_ha
     finally:
         conn.close()
 
+def actualizar_estado_walkins():
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        hoy = date.today().isoformat()
+        cur.execute("""
+            UPDATE walk_ins
+            SET estado = 'Completada', checked_out = 1
+            WHERE fecha_salida <= ? AND estado = 'En curso'
+        """, (hoy,))
+        conn.commit()
+    except Exception as e:
+        print(f"Error al actualizar estados de Walk-ins: {e}")
+        raise e
+    finally:
+        conn.close()
+
 def agregar_cargo_checkout(reserva_id, concepto, descripcion, monto):
     conn = conectar_bd()
     if not conn:
