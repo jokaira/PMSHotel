@@ -86,8 +86,13 @@ class CotizacionBuffet(ctk.CTkFrame):
 			self.total_var.set('$0.00')
 
 	def crear_tabla(self):
-		self.tabla_frame = ctk.CTkFrame(self, fg_color='transparent')
-		self.tabla_frame.pack(fill='both', expand=True, padx=16, pady=8)
+		# Contenedor principal para la tabla
+		tabla_container = ctk.CTkFrame(self, fg_color='transparent')
+		tabla_container.pack(fill='both', expand=True, padx=16, pady=8)
+		
+		# Contenedor con scroll vertical para navegar cotizaciones largas (scrollbar en lateral derecho)
+		self.tabla_frame = ctk.CTkScrollableFrame(tabla_container, fg_color='transparent', scrollbar_button_color=AZUL, scrollbar_button_hover_color=AZUL2)
+		self.tabla_frame.pack(fill='both', expand=True)
 		self.tabla = None
 
 	def cargar_cotizaciones(self):
