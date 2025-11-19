@@ -4,6 +4,7 @@ from datetime import datetime, date
 import requests
 import sqlite3
 import os
+from currency_converter import CurrencyConverter
 from settings import *
 from func_clases import Boton, crear_tarjetas_kpi
 from settings import EARLY_CHECKOUT_PENALTY_PERCENT, KPI_FRONTDESK
@@ -13,6 +14,7 @@ from basedatos import (validar_fecha,
     registrar_early_checkin,
     buscar_habitaciones_disponibles,
     registrar_walkin,
+    registrar_pago,
     agregar_cargo_checkout,
     extender_estadia,
     registrar_checkout,
@@ -22,7 +24,8 @@ from basedatos import (validar_fecha,
     obtener_tipos_habitaciones,
     obtener_walkins,
     conectar_bd as conectar_db
-)  
+    )
+
 
 # --- CONFIGURACIÓN ---
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -60,12 +63,42 @@ class FrontDeskApp(ctk.CTkFrame):
         self.dashboard_frame = ctk.CTkFrame(self, fg_color='transparent')
         self.dashboard_frame.pack(pady=8, fill="x")
         self.dashboard_frame.rowconfigure(index=0, weight=0, minsize=109)
-        self.dashboard_frame.columnconfigure(index=(0,1,2,3), weight=1, uniform='c')
-        crear_tarjetas_kpi(master=self.dashboard_frame, dict=KPI_FRONTDESK())
+        self.dashboard_frame.columnconfigure(index=(0,1,2,3,4), weight=1, uniform='c')  # Aumenta columnas si agregas KPIs
 
+        # Calcula el total pendiente sumando la deuda de todas las reservas activas
+        conn = conectar_db()
+        if not conn:
+            messagebox.showerror("Error DB", "No se pudo conectar a la base de datos.")
+            return
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM reservas WHERE estado IN ('checked-in', 'checkout')")
+        reservas = cur.fetchall()
+        total_pendiente = 0.0
+        for r in reservas:
+            reserva_id = r['id'] if isinstance(r, dict) or hasattr(r, 'keys') else r[0]
+            total_pendiente += obtener_total_deuda(reserva_id)
+        conn.close()
+
+        # Obtén los KPIs base llamando la función
+        kpi_dict = KPI_FRONTDESK()
+
+        # Agrega el KPI de "Total pendiente"
+        kpi_dict["total_pendiente"] = {
+            "titulo": "💰 Total pendiente",
+            "cantidad": f"${total_pendiente:,.2f}",
+            "subtitulo": "Por cobrar",
+            "color": VERDE1,
+            "col": 4  # Ajusta la columna según el orden que quieras
+        }
+
+        crear_tarjetas_kpi(
+            master=self.dashboard_frame,
+            dict=kpi_dict
+        )
     def actualizar_dashboard(self):
         # The dashboard is now created dynamically with current data, so this method is no longer needed.
         # Re-creating the dashboard would be the way to "update" it if data changes.
+        
         pass
 
     # ---------------- Check-in ----------------
@@ -632,14 +665,16 @@ class FrontDeskApp(ctk.CTkFrame):
 
     def _callback_cargo_agregado(self, reserva_id, concepto, descripcion, monto):
         try:
-            agregar_cargo_checkout(reserva_id, concepto, descripcion, monto)
+            # Incluye el ID de la reserva en notas
+            notas = f"Reserva ID: {reserva_id} - {descripcion}"
+            concepto_completo = concepto  # Puedes dejar el concepto simple
+            agregar_cargo_checkout(reserva_id, concepto_completo, notas, monto)
             messagebox.showinfo("Éxito", "Cargo agregado al total de la reserva.")
             self.cargar_checkouts()
             self.actualizar_dashboard()
             self.selected_checkout = None
         except Exception as e:
             messagebox.showerror("Error de DB", f"No se pudo agregar el cargo. Error: {e}")
-
     def extender_estadia_gui(self):
         if not self.selected_checkout:
             messagebox.showwarning("Aviso", "Seleccione una reserva.")
@@ -697,16 +732,15 @@ class FrontDeskApp(ctk.CTkFrame):
         except Exception as e:
             messagebox.showerror("Error de DB", f"No se pudo completar el Check-out. Error: {e}")
 
+
     def cobro_gui(self):
         if not self.selected_checkout:
             messagebox.showwarning("Aviso", "Seleccione una reserva en Check-out para realizar un cobro.")
             return
-        
-        reserva_id = self.selected_checkout['id']
-        total_deuda = obtener_total_deuda(reserva_id)
-        
-        ModalCobro(self.master, reserva_id, total_deuda)
 
+        reserva_id = self.selected_checkout['id']
+        total_deuda = obtener_total_deuda(reserva_id)  # <-- Esto suma cargos y pagos
+        ModalCobro(self.master, reserva_id, total_deuda)
     def late_checkout_gui(self):
         if not self.selected_checkout:
             messagebox.showwarning("Aviso", "Seleccione una reserva.")
@@ -960,76 +994,84 @@ class ModalCobro(ctk.CTkToplevel):
         self.monto_total_dop = monto_total_dop
 
         self.title("Registrar Pago")
-        self.geometry("500x600")
+        self.geometry("520x650")
         self.transient(master)
         self.grab_set()
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
 
-        # --- Frame Principal ---
         main_frame = ctk.CTkFrame(self, fg_color=CLARO)
         main_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         main_frame.grid_columnconfigure(1, weight=1)
 
-        # --- Título ---
-        ctk.CTkLabel(main_frame, text="Registrar pago", font=(FUENTE, 20, 'bold'), text_color=OSCURO).grid(row=0, column=0, columnspan=2, pady=(0, 20), sticky="w")
-
-        # --- Total en DOP ---
-        ctk.CTkLabel(main_frame, text="Total en DOP", text_color=OSCURO).grid(row=1, column=0, padx=(0, 10), pady=10, sticky="w")
-        self.total_dop_entry = ctk.CTkEntry(main_frame)
-        self.total_dop_entry.grid(row=1, column=1, sticky="ew")
-        self.total_dop_entry.insert(0, f"{self.monto_total_dop:.2f}")
+        # --- Monto a pagar ---
+        ctk.CTkLabel(main_frame, text="Monto a pagar", font=(FUENTE, 16, 'bold'), text_color=OSCURO).grid(row=0, column=0, sticky="w", pady=(0,10))
+        self.monto_entry = ctk.CTkEntry(main_frame)
+        self.monto_entry.grid(row=0, column=1, sticky="ew")
+        self.monto_entry.insert(0, f"{self.monto_total_dop:.2f}")
 
         # --- Moneda ---
-        ctk.CTkLabel(main_frame, text="Moneda", text_color=OSCURO).grid(row=2, column=0, padx=(0, 10), pady=10, sticky="w")
+        ctk.CTkLabel(main_frame, text="Moneda", text_color=OSCURO).grid(row=1, column=0, sticky="w", pady=10)
         self.moneda_optionmenu = ctk.CTkOptionMenu(main_frame, values=["DOP", "USD", "EUR"], command=self.actualizar_tasa)
-        self.moneda_optionmenu.grid(row=2, column=1, sticky="ew")
+        self.moneda_optionmenu.grid(row=1, column=1, sticky="ew")
 
-        # --- Tasa ---
-        ctk.CTkLabel(main_frame, text="Tasa", text_color=OSCURO).grid(row=3, column=0, padx=(0, 10), pady=10, sticky="w")
+        # --- Tasa de cambio ---
+        ctk.CTkLabel(main_frame, text="Tasa de cambio", text_color=OSCURO).grid(row=2, column=0, sticky="w", pady=10)
         self.tasa_entry = ctk.CTkEntry(main_frame)
-        self.tasa_entry.grid(row=3, column=1, sticky="ew")
+        self.tasa_entry.grid(row=2, column=1, sticky="ew")
         self.tasa_entry.bind("<KeyRelease>", self.actualizar_monto_equivalente)
-
-        # Label para la fuente de la tasa
         self.tasa_fuente_label = ctk.CTkLabel(main_frame, text="Fuente: Manual", text_color=GRIS)
-        self.tasa_fuente_label.grid(row=3, column=2, padx=10, sticky="w")
-        # --- Monto Equivalente ---
-        ctk.CTkLabel(main_frame, text="Monto equivalente", text_color=OSCURO).grid(row=4, column=0, padx=(0, 10), pady=10, sticky="w")
+        self.tasa_fuente_label.grid(row=2, column=2, padx=10, sticky="w")
+
+        # --- Monto equivalente ---
+        ctk.CTkLabel(main_frame, text="Monto equivalente", text_color=OSCURO).grid(row=3, column=0, sticky="w", pady=10)
         self.monto_equivalente_entry = ctk.CTkEntry(main_frame, state="readonly")
-        self.monto_equivalente_entry.grid(row=4, column=1, sticky="ew")
+        self.monto_equivalente_entry.grid(row=3, column=1, sticky="ew")
+
+        # --- Método de pago ---
+        ctk.CTkLabel(main_frame, text="Método de pago", text_color=OSCURO).grid(row=4, column=0, sticky="w", pady=10)
+        self.metodo_pago_optionmenu = ctk.CTkOptionMenu(main_frame, values=["Efectivo", "Tarjeta", "Transferencia", "Cheque"])
+        self.metodo_pago_optionmenu.grid(row=4, column=1, sticky="ew")
+
+        # --- Notas ---
+        ctk.CTkLabel(main_frame, text="Notas", text_color=OSCURO).grid(row=5, column=0, sticky="w", pady=10)
+        self.notas_entry = ctk.CTkEntry(main_frame)
+        self.notas_entry.grid(row=5, column=1, sticky="ew")
+
+        # --- Resumen ---
+        self.resumen_label = ctk.CTkLabel(main_frame, text="", text_color=OSCURO, font=(FUENTE, 13))
+        self.resumen_label.grid(row=6, column=0, columnspan=2, pady=10)
 
         # --- Botón Registrar Pago ---
-        ctk.CTkButton(main_frame, text="Registrar pago", command=self.registrar_pago, fg_color=VERDE1, text_color=BLANCO).grid(row=5, column=0, columnspan=2, pady=20)
+        ctk.CTkButton(main_frame, text="Registrar pago", command=self.registrar_pago, fg_color=VERDE1, text_color=BLANCO).grid(row=7, column=0, columnspan=2, pady=20)
 
-        # --- Historial de Pagos ---
+        
+       # --- Historial de Pagos ---
         historial_frame = ctk.CTkFrame(self, fg_color=CLARO)
         historial_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
         historial_frame.grid_columnconfigure(0, weight=1)
         historial_frame.grid_rowconfigure(1, weight=1)
+        historial_frame.grid_rowconfigure(1, weight=1)
+        
+        # Scrollbar para el Treeview
+        scrollbar = ttk.Scrollbar(historial_frame, orient="vertical")
+        scrollbar.grid(row=1, column=1, sticky="ns")
 
-        # ...existing code...
-        self.tasa_entry = ctk.CTkEntry(main_frame)
-        self.tasa_entry.grid(row=3, column=1, sticky="ew")
-        self.tasa_entry.bind("<KeyRelease>", self.actualizar_monto_equivalente)
-
-        # Label para la fuente de la tasa
-        self.tasa_fuente_label = ctk.CTkLabel(main_frame, text="Fuente: Manual", text_color=GRIS)
-        self.tasa_fuente_label.grid(row=3, column=2, padx=10, sticky="w")
-        # ...existing code...
-        ctk.CTkLabel(historial_frame, text="Historial de pagos", font=(FUENTE, 16, 'bold'), text_color=OSCURO).grid(row=0, column=0, pady=(0, 10), sticky="w")
-
-        self.historial_treeview = ttk.Treeview(historial_frame, columns=("ID", "ID reserva", "Monto local", "Moneda", "Tasa", "Monto equivalente", "Fecha"), show="headings")
-        self.historial_treeview.heading("ID", text="ID")
-        self.historial_treeview.heading("ID reserva", text="ID reserva")
-        self.historial_treeview.heading("Monto local", text="Monto local")
-        self.historial_treeview.heading("Moneda", text="Moneda")
-        self.historial_treeview.heading("Tasa", text="Tasa")
-        self.historial_treeview.heading("Monto equivalente", text="Monto equivalente")
-        self.historial_treeview.heading("Fecha", text="Fecha")
+        self.historial_treeview = ttk.Treeview(
+            historial_frame,
+            columns=("ID", "Concepto", "Monto", "Método de Pago", "Notas", "Fecha", "Tipo"),
+            show="headings",
+            yscrollcommand=scrollbar.set
+            )
         self.historial_treeview.grid(row=1, column=0, sticky="nsew")
 
+        self.historial_treeview.heading("ID", text="ID")
+        self.historial_treeview.heading("Concepto", text="Concepto")
+        self.historial_treeview.heading("Monto", text="Monto")
+        self.historial_treeview.heading("Método de Pago", text="Método de Pago")
+        self.historial_treeview.heading("Notas", text="Notas")
+        self.historial_treeview.heading("Fecha", text="Fecha")
+        self.historial_treeview.heading("Tipo", text="Tipo")
         self.actualizar_tasa(self.moneda_optionmenu.get())
         self.cargar_historial_pagos()
 
@@ -1037,84 +1079,138 @@ class ModalCobro(ctk.CTkToplevel):
         if moneda == "DOP":
             self.tasa_entry.delete(0, "end")
             self.tasa_entry.insert(0, "1.00")
-            self.tasa_fuente_label.configure(text="Fuente: Manual")
+            self.tasa_fuente_label.configure(text="Fuente: Local")
             self.actualizar_monto_equivalente()
             return
 
         try:
-            response = requests.get(f"https://api.exchangerate.host/latest?base=DOP&symbols={moneda}")
-            response.raise_for_status()
+            API_KEY = "38dd432f386634a44338de2b"
+            url = f"https://v6.exchangerate-api.com/v6/{API_KEY}/latest/DOP"
+            response = requests.get(url)
             data = response.json()
-            print("Respuesta de la API:", data)
-            if "rates" in data and moneda in data["rates"]:
-                tasa = data["rates"][moneda]
+            if data["result"] == "success" and moneda in data["conversion_rates"]:
+                tasa_api = data["conversion_rates"][moneda]
+                tasa_mostrar = 1 / tasa_api if tasa_api > 0 else 1.0
                 self.tasa_entry.delete(0, "end")
-                self.tasa_entry.insert(0, f"{tasa:.2f}")
-                self.tasa_fuente_label.configure(text="Fuente: API exchangerate.host")
+                self.tasa_entry.insert(0, f"{tasa_mostrar:.2f}")
+                self.tasa_fuente_label.configure(text="Fuente: ExchangeRate-API")
             else:
                 raise KeyError("No se pudo obtener la tasa de cambio para la moneda seleccionada.")
-        except Exception:
-            tasa_default = {"USD": 58.0, "EUR": 63.0}
+        except Exception as e:
+            tasas_default = {"USD": 63.78, "EUR": 73.92}
+            tasa = tasas_default.get(moneda, 1.0)
             self.tasa_entry.delete(0, "end")
-            self.tasa_entry.insert(0, f"{tasa_default.get(moneda, 1.0):.2f}")
-            self.tasa_fuente_label.configure(text="Fuente: Manual (predeterminada)")
-            messagebox.showwarning("Advertencia", "No se pudo obtener la tasa de cambio en tiempo real. Usando tasa predeterminada.")
+            self.tasa_entry.insert(0, f"{tasa:.2f}")
+            self.tasa_fuente_label.configure(text="Fuente: Manual (fallback)")
+            messagebox.showwarning(
+                "Advertencia",
+                f"No se pudo obtener la tasa en vivo. Usando una tasa predeterminada.\nDetalle: {e}"
+            )
         self.actualizar_monto_equivalente()
 
     def actualizar_monto_equivalente(self, event=None):
         try:
-            total_dop = float(self.total_dop_entry.get())
+            monto = float(self.monto_entry.get())
             tasa = float(self.tasa_entry.get())
             moneda = self.moneda_optionmenu.get()
-            monto_equivalente = total_dop / tasa
+            if tasa <= 0:
+                raise ZeroDivisionError("La tasa de cambio no puede ser cero o negativa.")
+            if moneda == "DOP":
+                monto_equivalente = monto
+            else:
+                monto_equivalente = monto * tasa  # <-- Multiplica para convertir a DOP
             self.monto_equivalente_entry.configure(state="normal")
             self.monto_equivalente_entry.delete(0, "end")
-            self.monto_equivalente_entry.insert(0, f"{monto_equivalente:.2f} {moneda}")
+            self.monto_equivalente_entry.insert(0, f"{monto_equivalente:.2f} DOP")
             self.monto_equivalente_entry.configure(state="readonly")
-        except (ValueError, ZeroDivisionError):
+            self.mostrar_resumen(monto, monto_equivalente, moneda, tasa)
+        except (ValueError, ZeroDivisionError) as e:
             self.monto_equivalente_entry.configure(state="normal")
             self.monto_equivalente_entry.delete(0, "end")
             self.monto_equivalente_entry.insert(0, "Error")
             self.monto_equivalente_entry.configure(state="readonly")
+            self.resumen_label.configure(text="Error en los datos ingresados.")
+    def mostrar_resumen(self, monto, monto_equivalente, moneda, tasa):
+        metodo_pago = self.metodo_pago_optionmenu.get()
+        notas = self.notas_entry.get()
+        resumen = (
+            f"Monto ingresado: {monto:.2f} DOP\n"
+            f"Moneda seleccionada: {moneda}\n"
+            f"Tasa aplicada: {tasa:.2f}\n"
+            f"Monto equivalente: {monto_equivalente:.2f} {moneda}\n"
+            f"Método de pago: {metodo_pago}\n"
+            f"Notas: {notas}"
+        )
+        self.resumen_label.configure(text=resumen)
 
     def registrar_pago(self):
         try:
-            monto_local = float(self.total_dop_entry.get())
+            monto = float(self.monto_entry.get())
             moneda = self.moneda_optionmenu.get()
             tasa = float(self.tasa_entry.get())
-            monto_equivalente = monto_local / tasa
-            fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            metodo_pago = self.metodo_pago_optionmenu.get()
+            notas = self.notas_entry.get()
             fuente_tasa = self.tasa_fuente_label.cget("text").replace("Fuente: ", "")
-
-            conn = sqlite3.connect(DB_PATH)
-            cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO pagos (id_reserva, monto_local, moneda, tasa, monto_equivalente, fecha, fuente_tasa)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (self.reserva_id, monto_local, moneda, tasa, monto_equivalente, fecha, fuente_tasa))
-            conn.commit()
-            conn.close()
-
-            messagebox.showinfo("Éxito", "Pago registrado exitosamente.")
-            self.cargar_historial_pagos()
-        except (ValueError, sqlite3.Error) as e:
+            notas_completas = f"Reserva ID: {self.reserva_id} - Tasa: {tasa:.2f}, Fuente: {fuente_tasa}. {notas}"
+            if moneda == "DOP":
+                monto_registro = monto
+            else:
+                monto_registro = monto / tasa
+            datos_pago = (
+                'pago',
+                f'Pago reserva ID {self.reserva_id}',
+                monto_registro,
+                metodo_pago,
+                notas_completas
+            )
+            resultado, mensaje, pago_id = registrar_pago(datos_pago)
+            if resultado:
+                messagebox.showinfo("Éxito", f"Pago registrado exitosamente con ID: {pago_id}")
+                self.cargar_historial_pagos()
+                
+                # --- Automatización ---
+                saldo_pendiente = obtener_total_deuda(self.reserva_id)
+                if saldo_pendiente <= 0:
+                    try:
+                        registrar_checkout(self.reserva_id)
+                        messagebox.showinfo("Reserva completada", "El saldo está pagado. La reserva se ha marcado como completada automáticamente.")
+                    except Exception as e:
+                        messagebox.showerror("Error", f"No se pudo completar la reserva automáticamente: {e}")
+            else:
+                messagebox.showerror("Error", mensaje)
+        except (ValueError, Exception) as e:
             messagebox.showerror("Error", f"No se pudo registrar el pago: {e}")
-
     def cargar_historial_pagos(self):
         for item in self.historial_treeview.get_children():
             self.historial_treeview.delete(item)
-
+        conn = conectar_db()
+        if not conn:
+            messagebox.showerror("Error de Base de Datos", "No se pudo conectar a la base de datos.")
+            return
+        cur = conn.cursor()
         try:
-            conn = sqlite3.connect(DB_PATH)
-            cur = conn.cursor()
-            cur.execute("SELECT id, id_reserva, monto_local, moneda, tasa, monto_equivalente, fecha FROM pagos WHERE id_reserva = ? ORDER BY fecha DESC", (self.reserva_id,))
+            cur.execute("""
+                SELECT id, concepto, monto, metodo_pago, notas, fecha_pago, tipo_ingreso
+                FROM ingresos
+                WHERE (tipo_ingreso = 'pago' OR tipo_ingreso = 'costo_adicional_checkout')
+                AND notas LIKE ?
+                ORDER BY fecha_pago DESC
+            """, (f'%Reserva ID: {self.reserva_id}%',))
             pagos = cur.fetchall()
-            conn.close()
-
+            
             for pago in pagos:
-                self.historial_treeview.insert("", "end", values=pago)
+                pago = tuple(pago)  # <-- Convierte el Row a tupla
+                tipo = "Cargo" if pago[-1] == 'costo_adicional_checkout' else "Pago"
+                valores = pago[:-1] + (tipo,)
+                if tipo == "Cargo":
+                    self.historial_treeview.insert("", "end", values=valores, tags=("cargo",))
+                else:
+                    self.historial_treeview.insert("", "end", values=valores)
         except sqlite3.Error as e:
             messagebox.showerror("Error de Base de Datos", f"Error al cargar el historial de pagos: {e}")
+        finally:
+            conn.close()
+
 class ModalEarlyCheckout(ctk.CTkToplevel):
     def __init__(self, master, reserva_id, fecha_salida_programada, callback):
         super().__init__(master)
