@@ -376,14 +376,14 @@ def insertar_datos_muestra():
             # Insertar Clientes
             cursor.execute("""
             INSERT INTO clientes (nombres, apellidos, tipo_doc, numero_doc, fecha_nac, genero, nacionalidad, telefono, email) VALUES
-            ('María', 'Pérez', 'Cédula', '001-1234567-8', '1995-02-01', 'Femenino', 'Dominicana', '809-555-0000', 'maria@example.com'),
-            ('Juan', 'Gómez', 'Pasaporte', 'P123456', '1990-11-10', 'Masculino', 'Argentina', '11-5555-5555', 'juan@example.com'),
-            ('Ana', 'Rodríguez', 'Cédula', '001-2345678-9', '1988-07-15', 'Femenino', 'Dominicana', '809-555-1111', 'ana@example.com'),
-            ('Carlos', 'López', 'Cédula', '001-3456789-0', '1992-03-20', 'Masculino', 'Dominicana', '809-555-2222', 'carlos@example.com'),
-            ('Sofia', 'Martínez', 'Pasaporte', 'P789012', '1993-09-12', 'Femenino', 'Español', '34-666-777-888', 'sofia@example.com'),
-            ('Roberto', 'Fernández', 'Cédula', '001-4567890-1', '1985-12-05', 'Masculino', 'Dominicana', '809-555-3333', 'roberto@example.com'),
-            ('Carmen', 'García', 'Cédula', '001-5678901-2', '1991-06-18', 'Femenino', 'Dominicana', '809-555-4444', 'carmen@example.com'),
-            ('Miguel', 'Santos', 'Cédula', '001-6789012-3', '1987-04-25', 'Masculino', 'Dominicana', '809-555-5555', 'miguel@example.com');
+            ('María', 'Pérez', 'Cédula', '001-1234567-8', '1995-02-01', 'Femenino', 'Dominicana', '809-555-0000', 'maria@email.com'),
+            ('Juan', 'Gómez', 'Pasaporte', 'P123456', '1990-11-10', 'Masculino', 'Argentina', '11-5555-5555', 'juan@email.com'),
+            ('Ana', 'Rodríguez', 'Cédula', '001-2345678-9', '1988-07-15', 'Femenino', 'Dominicana', '809-555-1111', 'ana@email.com'),
+            ('Carlos', 'López', 'Cédula', '001-3456789-0', '1992-03-20', 'Masculino', 'Dominicana', '809-555-2222', 'carlos@email.com'),
+            ('Sofia', 'Martínez', 'Pasaporte', 'P789012', '1993-09-12', 'Femenino', 'Español', '34-666-777-888', 'sofia@email.com'),
+            ('Roberto', 'Fernández', 'Cédula', '001-4567890-1', '1985-12-05', 'Masculino', 'Dominicana', '809-555-3333', 'roberto@email.com'),
+            ('Carmen', 'García', 'Cédula', '001-5678901-2', '1991-06-18', 'Femenino', 'Dominicana', '809-555-4444', 'carmen@email.com'),
+            ('Miguel', 'Santos', 'Cédula', '001-6789012-3', '1987-04-25', 'Masculino', 'Dominicana', '809-555-5555', 'miguel@email.com');
             """)
 
             # Insertar Habitaciones
@@ -447,17 +447,17 @@ def insertar_datos_muestra():
                 fecha_entrada, fecha_salida, id_pago, monto_pago,
                 checked_in, checked_out, estado, notas
             ) VALUES
-            ('101', 'Doble', 1, 'María Pérez', 'maria@example.com', date('now'), date('now', '+2 days'), 1, 160.00, 1, 0, 'En curso', ''),
-            ('102', 'Individual', 2, 'Juan Gómez', 'juan@example.com', date('now'), date('now', '+1 day'), 2, 50.00, 1, 0, 'En curso', ''),
-            ('203', 'Suite', 6, 'Roberto Fernández', 'roberto@example.com', date('now', '-1 day'), date('now', '+1 day'), 3, 300.00, 1, 0, 'En curso', ''),
-            ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@example.com', date('now', '+1 day'), date('now', '+3 days'), 11, 300.00, 0, 0, 'Pendiente', ''),
-            ('301', 'Doble', 4, 'Carlos López', 'carlos@example.com', date('now', '+2 days'), date('now', '+4 days'), 12, 160.00, 0, 0, 'Pendiente', ''),
-            ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@example.com', date('now', '+5 days'), date('now', '+7 days'), 13, 600.00, 0, 0, 'Pendiente', ''),
-            ('103', 'Individual', 7, 'Carmen García', 'carmen@example.com', date('now', '+10 days'), date('now', '+12 days'), 14, 100.00, 0, 0, 'Pendiente', ''),
-            ('101', 'Doble', 8, 'Luis Pérez', 'luis@example.com', date('now', '-7 days'), date('now', '-5 days'), 15, 160.00, 1, 1, 'Completada', 'Estancia finalizada sin incidencias'),
-            ('203', 'Suite', 9, 'Elena Torres', 'elena@example.com', date('now', '-12 days'), date('now', '-10 days'), 16, 300.00, 1, 1, 'Completada', ''),
-            ('102', 'Individual', 10, 'Mario Díaz', 'mario@example.com', date('now', '-3 days'), date('now', '-1 day'), 17, 50.00, 0, 0, 'Cancelada', 'Cancelada por el cliente'),
-            ('301', 'Doble', 11, 'Ana Ruiz', 'ana.ruiz@example.com', date('now', '+4 days'), date('now', '+6 days'), 18, 160.00, 0, 0, 'Cancelada', 'Cancelada por no show');
+            ('101', 'Doble', 1, 'María Pérez', 'maria@email.com', date('now'), date('now', '+2 days'), 1, 160.00, 1, 0, 'En curso', ''),
+            ('102', 'Individual', 2, 'Juan Gómez', 'juan@email.com', date('now'), date('now', '+1 day'), 2, 50.00, 1, 0, 'En curso', ''),
+            ('203', 'Suite', 6, 'Roberto Fernández', 'roberto@email.com', date('now', '-1 day'), date('now', '+1 day'), 3, 300.00, 1, 0, 'En curso', ''),
+            ('201', 'Suite', 3, 'Ana Rodríguez', 'ana@email.com', date('now', '+1 day'), date('now', '+3 days'), 11, 300.00, 0, 0, 'Pendiente', ''),
+            ('301', 'Doble', 4, 'Carlos López', 'carlos@email.com', date('now', '+2 days'), date('now', '+4 days'), 12, 160.00, 0, 0, 'Pendiente', ''),
+            ('401', 'Presidencial', 5, 'Sofia Martínez', 'sofia@email.com', date('now', '+5 days'), date('now', '+7 days'), 13, 600.00, 0, 0, 'Pendiente', ''),
+            ('103', 'Individual', 7, 'Carmen García', 'carmen@email.com', date('now', '+10 days'), date('now', '+12 days'), 14, 100.00, 0, 0, 'Pendiente', ''),
+            ('101', 'Doble', 8, 'Luis Pérez', 'luis@email.com', date('now', '-7 days'), date('now', '-5 days'), 15, 160.00, 1, 1, 'Completada', 'Estancia finalizada sin incidencias'),
+            ('203', 'Suite', 9, 'Elena Torres', 'elena@email.com', date('now', '-12 days'), date('now', '-10 days'), 16, 300.00, 1, 1, 'Completada', ''),
+            ('102', 'Individual', 10, 'Mario Díaz', 'mario@email.com', date('now', '-3 days'), date('now', '-1 day'), 17, 50.00, 0, 0, 'Cancelada', 'Cancelada por el cliente'),
+            ('301', 'Doble', 11, 'Ana Ruiz', 'ana.ruiz@email.com', date('now', '+4 days'), date('now', '+6 days'), 18, 160.00, 0, 0, 'Cancelada', 'Cancelada por no show');
             """)
 
             # Insertar Walk-ins
@@ -466,8 +466,8 @@ def insertar_datos_muestra():
                 numero_hab, cliente_nombre, cliente_email, fecha_entrada, fecha_salida,
                 total_personas, id_pago, checked_in, checked_out, estado, notas
             ) VALUES
-            ('302', 'Pedro Ramírez', 'pedro@example.com', date('now'), date('now', '+1 day'), 2, 4, 1, 0, 'En curso', 'Walk-in de ejemplo'),
-            ('103', 'Cliente anterior', 'clienteanterior@example.com', date('now', '-25 days'), date('now', '-24 days'), 1, 9, 1, 0, 'Finalizado', 'Walk-in del mes anterior');
+            ('302', 'Pedro Ramírez', 'pedro@email.com', date('now'), date('now', '+1 day'), 2, 4, 1, 0, 'En curso', 'Walk-in de ejemplo'),
+            ('103', 'Cliente anterior', 'clienteanterior@email.com', date('now', '-25 days'), date('now', '-24 days'), 1, 9, 1, 0, 'Finalizado', 'Walk-in del mes anterior');
             """)
 
             # Insertar Tickets de Mantenimiento
@@ -957,6 +957,7 @@ def buscar_habitacion(texto, estado): #el query de consulta para buscar
     if conn:
         cursor = conn.cursor()
         try:
+            patron = f"%{texto}%" if texto else "%"
             cursor.execute("""
                 SELECT 
                     h.id as "ID",
@@ -971,13 +972,13 @@ def buscar_habitacion(texto, estado): #el query de consulta para buscar
                 WHERE 
                     (? = 'Todos' OR h.estado = ?)
                     AND (
-                        h.numero LIKE ? 
-                        OR th.nombre LIKE ? 
-                        OR h.ubicacion LIKE ? 
-                        OR h.notas LIKE ?
+                        COALESCE(h.numero, '') LIKE ?
+                        OR COALESCE(th.nombre, '') LIKE ?
+                        OR COALESCE(h.ubicacion, '') LIKE ?
+                        OR COALESCE(h.notas, '') LIKE ?
                     )
                 ORDER BY h.numero;
-            """, (estado, estado, f'%{texto}%', f'%{texto}%', f'%{texto}%', f'%{texto}%'))
+            """, (estado, estado, patron, patron, patron, patron))
             
             resultado = cursor.fetchall()
             return resultado
@@ -1106,64 +1107,127 @@ def guardar_tipo_habitacion(tipo, datos, clave):
         finally:
             conn.close()
 
-def hab_disponibles(fecha_entrada, fecha_salida, tipo = "Todos", capacidad_minima = None):
-    query = """
-            SELECT h.*
-            FROM habitaciones h
-            WHERE h.estado = 'Disponible'
-            AND h.numero NOT IN (
-                SELECT r.numero_hab
-                FROM reservas r
-                WHERE r.estado != 'Cancelada'
-                AND r.fecha_entrada < :fecha_salida
-                AND r.fecha_salida > :fecha_entrada
-            )
-            -- Caso especial: si la fecha de entrada es hoy, excluir habitaciones con check-in activo
-            AND (:fecha_entrada != DATE('now')
-                OR h.numero NOT IN (
-                    SELECT r.numero_hab
-                    FROM reservas r
-                    WHERE r.checked_in = 1 AND r.checked_out = 0
-                )
-            );
-            """
-    
-    query2 = """
-            SELECT nombre FROM tipos_habitacion
-            WHERE id = ?
-            """
-    
+def hab_disponibles(fecha_entrada, fecha_salida, tipo="Todos", capacidad_minima=None):
+    """
+    Retorna habitaciones disponibles entre fechas (acepta 'YYYY-MM-DD' o 'DD-MM-YYYY').
+    - Normaliza fechas de entrada a ISO.
+    - Convierte en la BD filas con formato DD-MM-YYYY a YYYY-MM-DD.
+    - Considera bloqueantes cualquier reserva/walk_in cuyo estado NO sea 'Cancelada' ni 'Completada'.
+    """
+    def _to_iso(f):
+        if not f:
+            return None
+        if isinstance(f, (date, datetime)):
+            return f.date().isoformat() if isinstance(f, datetime) else f.isoformat()
+        for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(f, fmt).date().isoformat()
+            except Exception:
+                pass
+        return None
+
+    fe_ini = _to_iso(fecha_entrada)
+    fe_fin = _to_iso(fecha_salida)
+    if not fe_ini or not fe_fin:
+        print("hab_disponibles: formato de fecha inválido:", fecha_entrada, fecha_salida)
+        return []
+
     conn = conectar_bd()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute(query, {"fecha_entrada": fecha_entrada, "fecha_salida": fecha_salida})
-            habitaciones = cursor.fetchall()
-            resultado = []
-            for habitacion in habitaciones:
-                datos_hab = []
-                datos_hab.append(habitacion[1])
-                cursor.execute(query2, (habitacion[2],))
-                tipo_hab = cursor.fetchone()[0]
-                datos_hab.append(tipo_hab)
-                datos_hab.append(habitacion[4])
-                datos_hab.append(habitacion[5])
+    if not conn:
+        return []
+    cursor = conn.cursor()
+    try:
+        # Normalizar fechas almacenadas en DD-MM-YYYY -> YYYY-MM-DD para reservas y walk_ins
+        updates = [
+            ("reservas", "fecha_entrada"),
+            ("reservas", "fecha_salida"),
+            ("walk_ins", "fecha_entrada"),
+            ("walk_ins", "fecha_salida"),
+        ]
+        total_converted = 0
+        for table, col in updates:
+            sql_upd = f"""
+                UPDATE {table}
+                SET {col} = substr({col},7,4) || '-' || substr({col},4,2) || '-' || substr({col},1,2)
+                WHERE {col} IS NOT NULL
+                  AND length({col}) = 10
+                  AND substr({col},3,1) = '-'
+                  AND substr({col},6,1) = '-'
+                  AND substr({col},5,1) != '-'
+            """
+            cursor.execute(sql_upd)
+            total_converted += cursor.rowcount
+        if total_converted:
+            conn.commit()
+            print(f"hab_disponibles: convertidas {total_converted} fechas de formato DD-MM-YYYY a ISO")
 
-                resultado.append(datos_hab)
-            if tipo != "Todos":
-                resultado = [habitacion for habitacion in resultado if habitacion[1] == tipo]
-            if capacidad_minima is not None:
-                resultado = [habitacion for habitacion in resultado if habitacion[3] >= capacidad_minima]
+        # Consulta: cualquier reserva/walk_in que se solape y cuyo estado NO sea 'Cancelada' ni 'Completada' bloquea la habitación
+        query = """
+            SELECT 
+                h.numero,
+                th.nombre AS tipo,
+                h.ubicacion,
+                h.capacidad,
+                h.estado
+            FROM habitaciones h
+            JOIN tipos_habitacion th ON h.tipo_id = th.id
+            WHERE 
+                -- No existe reserva no-cancelada/no-completada que se solape con el rango
+                NOT EXISTS (
+                    SELECT 1 FROM reservas r
+                    WHERE r.numero_hab = h.numero
+                      AND date(r.fecha_entrada) < date(:fecha_salida)
+                      AND date(r.fecha_salida)  > date(:fecha_entrada)
+                      AND r.estado NOT IN ('Cancelada','Completada')
+                )
+                -- No existe walk_in no-cancelado/no-completado que se solape con el rango
+                AND NOT EXISTS (
+                    SELECT 1 FROM walk_ins w
+                    WHERE w.numero_hab = h.numero
+                      AND date(w.fecha_entrada) < date(:fecha_salida)
+                      AND date(w.fecha_salida)  > date(:fecha_entrada)
+                      AND w.estado NOT IN ('Cancelada','Completada')
+                )
+            ORDER BY h.numero;
+        """
 
-            return resultado #retorna una lista con los siguientes datos:
-            #0: el numero de la habitacion
-            #1: el tipo de habitación
-            #2: la ubicacion de la habitacion
-            #3: la capacidad de la habitacion
-        except sql.Error as e:
-            print(f'Error al obtener habitaciones: {e}')
-        finally:
-            conn.close()
+        # Ejecutar consulta con fechas normalizadas
+        print("DEBUG hab_disponibles: fe_ini =", fe_ini, "fe_fin =", fe_fin)
+        cursor.execute(query, {"fecha_entrada": fe_ini, "fecha_salida": fe_fin})
+        rows = cursor.fetchall()
+        resultado = [[r[0], r[1] or '', r[2] or '', r[3] or 0, r[4] or ''] for r in rows]
+
+        # Si no hay resultados, listar conflictos para diagnóstico
+        if not resultado:
+            print("hab_disponibles: no se retornaron habitaciones; listando conflictos que solapan rango...")
+            cursor.execute("""
+                SELECT 'reserva' AS fuente, id, numero_hab, fecha_entrada, fecha_salida, estado
+                FROM reservas
+                WHERE date(fecha_entrada) < date(:fecha_salida) AND date(fecha_salida) > date(:fecha_entrada)
+                  AND estado NOT IN ('Cancelada','Completada')
+                UNION ALL
+                SELECT 'walk_in' AS fuente, id, numero_hab, fecha_entrada, fecha_salida, estado
+                FROM walk_ins
+                WHERE date(fecha_entrada) < date(:fecha_salida) AND date(fecha_salida) > date(:fecha_entrada)
+                  AND estado NOT IN ('Cancelada','Completada')
+                ORDER BY numero_hab, fecha_entrada;
+            """, {"fecha_entrada": fe_ini, "fecha_salida": fe_fin})
+            conflictos = cursor.fetchall()
+            for c in conflictos:
+                print("CONFLICTO:", dict(c))
+
+        # filtros opcionales en Python
+        if tipo != "Todos":
+            resultado = [h for h in resultado if h[1] == tipo]
+        if capacidad_minima is not None:
+            resultado = [h for h in resultado if h[3] >= capacidad_minima]
+
+        return resultado
+    except sql.Error as e:
+        print("Error en hab_disponibles:", e)
+        return []
+    finally:
+        conn.close()
 
 def registrar_pago(datos):
     conn = conectar_bd()
@@ -1190,7 +1254,7 @@ def guardar_reserva(tipo, datos, clave = None):
             if tipo == "agregar": #agregar reserva
                 cursor.execute("""
                 INSERT INTO reservas(numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email, fecha_entrada, fecha_salida, total_personas,id_pago, monto_pago, notas)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (datos))
             else: #editar reserva. las reservas no se editan
                 # cursor.execute("""
@@ -1724,6 +1788,19 @@ def eliminar_cotizacion_buffet(id_):
     if conn:
         cursor = conn.cursor()
         cursor.execute('DELETE FROM buffet WHERE id = ?', (id_,))
+        conn.commit()
+        conn.close()
+
+def actualizar_cotizacion_buffet(id_, fecha, personas, menu, precio, total, notas):
+    """Actualizar una cotización de buffet existente por id."""
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE buffet
+            SET fecha = ?, personas = ?, menu = ?, precio_por_persona = ?, total = ?, notas = ?
+            WHERE id = ?
+        ''', (fecha, personas, menu, precio, total, notas, id_))
         conn.commit()
         conn.close()
 
