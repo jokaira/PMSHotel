@@ -130,14 +130,10 @@ def crear_tablas():
                 FOREIGN KEY (cliente_email) REFERENCES clientes(email),
                 FOREIGN KEY (numero_hab) REFERENCES habitaciones(numero),
                 FOREIGN KEY (id_pago) REFERENCES ingresos(id)
+           
             );
             """)
             conn.commit()
-            try:
-                cursor.execute("ALTER TABLE reservas ADD COLUMN es_walkin INTEGER DEFAULT 0")
-            except sql.Error:
-                pass
-            print('4. Tabla "reservas" creada exitosamente')
 
             #4.5. areas
             cursor.execute("""
@@ -2325,44 +2321,51 @@ def registrar_walkin(nombre, email, f_entrada, f_salida, personas, monto, num_ha
     cur = conn.cursor()
     try:
         cur.execute("BEGIN")
-        # Buscar cliente por email
-        cur.execute("SELECT id FROM clientes WHERE email = ?", (email,))
-        row = cur.fetchone()
-        if row:
-            id_cliente = row['id']
-        else:
-            # Crear cliente genérico
-            cur.execute("""
-                INSERT INTO clientes (nombres, apellidos, tipo_doc, numero_doc, fecha_nac, genero, nacionalidad, telefono, email)
-                VALUES (?, '', 'Otro', '', date('now'), '', '', '', ?)
-            """, (nombre, email))
-            id_cliente = cur.lastrowid
-
         # Registrar el ingreso
         cur.execute("INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago) VALUES (?,?,?,?)",
                     ('walk_in', f'Walk-in Hab {num_hab}', monto, 'efectivo'))
         pago_id = cur.lastrowid
 
-        # Insertar en reservas
+        # Insertar en walk_ins
         cur.execute("""
-            INSERT INTO reservas (
-                numero_hab, tipo_habitacion, id_cliente, cliente_nombre, cliente_email,
-                fecha_entrada, fecha_salida, total_personas, id_pago, monto_pago,
-                checked_in, checked_out, estado, es_walkin
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 'En curso', 1)
+            INSERT INTO walk_ins (
+                numero_hab, cliente_nombre, cliente_email,
+                fecha_entrada, fecha_salida, total_personas,
+                id_pago, checked_in, checked_out, estado, notas
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, 'En curso', '')
         """, (
-            num_hab, 'Walk-in', id_cliente, nombre, email,
-            f_entrada, f_salida, personas, pago_id, monto
+            num_hab, nombre, email,
+            f_entrada, f_salida, personas,
+            pago_id
         ))
-        reserva_id = cur.lastrowid
+        walkin_id = cur.lastrowid
 
         # Actualizar estado de la habitación
         cur.execute("UPDATE habitaciones SET estado='Ocupada' WHERE numero=?", (num_hab,))
         # Registrar el check-in
-        cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo) VALUES (?, 'checkin')", (reserva_id,))
+        cur.execute("INSERT INTO checkins_checkouts (walk_in_id, tipo) VALUES (?, 'checkin')", (walkin_id,))
         conn.commit()
     except Exception as e:
         conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+def actualizar_estado_walkins():
+    conn = conectar_bd()
+    if not conn:
+        raise Exception("No se pudo conectar a la base de datos")
+    cur = conn.cursor()
+    try:
+        hoy = date.today().isoformat()
+        cur.execute("""
+            UPDATE walk_ins
+            SET estado = 'Completada', checked_out = 1
+            WHERE fecha_salida <= ? AND estado = 'En curso'
+        """, (hoy,))
+        conn.commit()
+    except Exception as e:
+        print(f"Error al actualizar estados de Walk-ins: {e}")
         raise e
     finally:
         conn.close()
@@ -2475,6 +2478,31 @@ def obtener_total_deuda(reserva_id):
         conn.close()
     return total_deuda
 
+def obtener_walkins():
+    conn = conectar_bd()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT 
+                    id,
+                    numero_hab,
+                    cliente_nombre,
+                    cliente_email,
+                    fecha_entrada,
+                    fecha_salida,
+                    total_personas,
+                    estado
+                FROM walk_ins
+                ORDER BY fecha_entrada DESC;
+            """)
+            resultado = cursor.fetchall()
+            return resultado
+        except sql.Error as e:
+            print(f'Error al obtener walk-ins: {e}')
+        finally:
+            conn.close()
+            
 def registrar_early_checkout(reserva_id):
     conn = conectar_bd()
     if not conn:

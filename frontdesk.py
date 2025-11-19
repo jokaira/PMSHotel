@@ -20,12 +20,13 @@ from basedatos import (validar_fecha,
     obtener_total_deuda,
     registrar_early_checkout as registrar_early_checkout_penalty,
     obtener_tipos_habitaciones,
+    obtener_walkins,
     conectar_bd as conectar_db
 )  
 
 # --- CONFIGURACIÓN ---
 script_dir = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(script_dir, "base_datos.db")
+DB_PATH = os.path.join(script_dir, "base_datos")
 CHECKIN_HOUR = 14
 EARLY_CHECKIN_PERCENT = 0.5
 
@@ -53,7 +54,7 @@ class FrontDeskApp(ctk.CTkFrame):
         self.crear_walkin()
         self.crear_checkout()
         self.actualizar_dashboard()
-
+        
     # ---------------- Dashboard ----------------
     def crear_dashboard(self):
         self.dashboard_frame = ctk.CTkFrame(self, fg_color='transparent')
@@ -249,14 +250,35 @@ class FrontDeskApp(ctk.CTkFrame):
 
     # ---------------- Walk-in ----------------
     def crear_walkin(self):
+        conn = conectar_db()
+        if not conn:
+            messagebox.showerror("Error DB", "No se pudo conectar a la base de datos.")
+            return
+        cur = conn.cursor()
+        try:
+            hoy = date.today().isoformat()
+            cur.execute("""
+                UPDATE walk_ins
+                SET estado = 'Completada', checked_out = 1
+                WHERE fecha_salida <= ? AND estado = 'En curso'
+            """, (hoy,))
+            conn.commit()
+        except Exception as e:
+            print(f"Error al actualizar estados de Walk-ins: {e}")
+        finally:
+            conn.close()
+
+        for widget in self.tab_walkin.winfo_children():
+            widget.destroy()
+
         frame = ctk.CTkFrame(self.tab_walkin, fg_color=CLARO)
         frame.pack(pady=8, fill="both", expand=True)
         frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
-        frame.grid_rowconfigure(0, weight=1) # Allow cliente_frame to expand vertically
-        frame.grid_rowconfigure(1, weight=1) # Allow busqueda_frame to expand vertically
-        frame.grid_rowconfigure(2, weight=1) # Allow self.w_habitaciones_frame to expand vertically
-        frame.grid_rowconfigure(3, weight=1) # Allow self.w_monto_label to expand vertically
-        frame.grid_rowconfigure(4, weight=1) # Allow the final button to expand vertically
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_rowconfigure(1, weight=1)
+        frame.grid_rowconfigure(2, weight=1)
+        frame.grid_rowconfigure(3, weight=1)
+        frame.grid_rowconfigure(4, weight=1)
 
         # --- Sección de Datos del Cliente ---
         cliente_frame = ctk.CTkFrame(frame, fg_color='transparent')
@@ -271,7 +293,7 @@ class FrontDeskApp(ctk.CTkFrame):
         ctk.CTkLabel(cliente_frame, text="Email:", text_color=OSCURO).grid(row=1, column=2, padx=5, pady=6, sticky="w")
         self.w_email = ctk.CTkEntry(cliente_frame); self.w_email.grid(row=1, column=3, padx=(5,0), pady=6, sticky="ew")
 
-        # --- Sección de Búsqueda de Habitación ---
+    # --- Sección de Búsqueda de Habitación ---
         busqueda_frame = ctk.CTkFrame(frame, fg_color='transparent')
         busqueda_frame.grid(row=1, column=0, columnspan=4, sticky='nsew', padx=10, pady=10)
         busqueda_frame.grid_columnconfigure((1, 3), weight=1)
@@ -292,18 +314,114 @@ class FrontDeskApp(ctk.CTkFrame):
         
         ctk.CTkLabel(busqueda_frame, text="No. Personas:", text_color=OSCURO).grid(row=2, column=2, padx=5, pady=6, sticky="w")
         self.w_personas = ctk.CTkEntry(busqueda_frame); self.w_personas.grid(row=2, column=3, padx=(5,0), pady=6, sticky="ew")
-        
+    
         ctk.CTkButton(busqueda_frame, text="Buscar Habitaciones Disponibles", command=self.buscar_habitaciones_gui, fg_color=AZUL, text_color=BLANCO).grid(row=3, column=0, columnspan=4, pady=10)
 
-        # --- Resultados y Confirmación ---
+    # --- Resultados y Confirmación ---
         self.w_habitaciones_frame = ctk.CTkScrollableFrame(frame, fg_color=GRIS_CLARO3, corner_radius=6, height=80)
         self.w_habitaciones_frame.grid(row=2, column=0, columnspan=4, padx=10, pady=5, sticky="nsew")
         self.selected_habitacion = None
 
         self.w_monto_label = ctk.CTkLabel(frame, text="Monto Total Estimado: $0.00", text_color=OSCURO, font=(FUENTE, 13, 'bold'))
         self.w_monto_label.grid(row=3, column=0, columnspan=4, pady=6)
+
+    # --- Botones de Confirmar y Ver Historial ---
+        ctk.CTkButton(frame, text="Confirmar Walk-in", command=self.confirmar_walkin_gui, fg_color=VERDE1, text_color=BLANCO).grid(row=4, column=2, pady=10, padx=6, sticky='ew')
+        ctk.CTkButton(frame, text="Ver historial de Walk-ins", command=self.historial_walkin, fg_color=AZUL, text_color=BLANCO).grid(row=4, column=3, pady=10, padx=6, sticky='ew')
+
+
+    def historial_walkin(self):
+    # Limpia el frame principal de la pestaña walk-in
+        for widget in self.tab_walkin.winfo_children():
+            widget.destroy()
+
+    # Encabezado y estilo de botón activo
+        ctk.CTkLabel(self.tab_walkin, 
+                 text='📚 Historial de Walk-ins',
+                 text_color=PRIMARIO,
+                 font=(FUENTE, TAMANO_1, 'bold')
+                 ).pack(pady=6, padx=12, anchor='w')
+
+    # Frame para la tabla
+        contenedor_tabla = ctk.CTkFrame(self.tab_walkin, fg_color='transparent', border_color=GRIS_CLARO3, border_width=1, corner_radius=10)
+        contenedor_tabla.pack(fill='both', expand=True, padx=12, pady=12)
+
+    # Encabezados
+        encabezados = ["ID", "Hab.", "Cliente", "Email", "Entrada", "Salida", "Personas", "Estado"]
+        data_tabla = [encabezados]
+
+    # Obtiene los walk-ins registrados
+        walkins = obtener_walkins()
+        for w in walkins:
+                fila = [w["id"], w["numero_hab"], w["cliente_nombre"], w["cliente_email"], w["fecha_entrada"], w["fecha_salida"], w["total_personas"], w["estado"]]
+                data_tabla.append(fila)
+        self.tabla_walkin(data=data_tabla, contenedor=contenedor_tabla)
         
-        ctk.CTkButton(frame, text="Confirmar Walk-in", command=self.confirmar_walkin_gui, fg_color=VERDE1, text_color=BLANCO).grid(row=4, column=0, columnspan=4, pady=10, padx=10, sticky='s')
+        ctk.CTkButton(self.tab_walkin, text="Volver atrás", command=self.crear_walkin, fg_color=ROJO, text_color=BLANCO).pack(pady=10)
+
+    # Muestra la tabla
+    def tabla_walkin(self, data, contenedor):
+    # Limpia el contenedor
+        for w in contenedor.winfo_children():
+            w.destroy()
+
+        frame = ctk.CTkScrollableFrame(master=contenedor, fg_color='transparent')
+        frame.pack(fill='both', expand=True, padx=12, pady=12)
+
+    # Colores para estados
+        colores = {
+            'Completada': VERDE1, 
+            'En curso': AZUL, 
+            'Pendiente': MAMEY, 
+            'Cancelada': ROJO,
+        }
+
+        self.celdas_walkin = []
+        for f, fila in enumerate(data):
+            fila_widgets = []
+            for c, texto in enumerate(fila):
+            # Coloreado de las líneas
+                if f == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, TAMANO_TEXTO_DEFAULT, 'bold')
+                elif f % 2 == 0:
+                    bg = 'transparent'
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+                else:
+                    bg = GRIS_CLARO4
+                    fg = OSCURO
+                    font = (FUENTE, 12)
+
+            # Resaltado de estado con "pilas"
+                if texto in colores:
+                    cont_pila = ctk.CTkFrame(master=frame, fg_color=bg, corner_radius=0)
+                    cont_pila.grid(row=f*2, column=c, sticky='nsew', padx=1, pady=1)
+
+                    pila = ctk.CTkFrame(master=cont_pila, fg_color=colores[texto], corner_radius=15, height=28)
+                    pila.pack(fill='y')
+
+                    lbl = ctk.CTkLabel(master=pila, text=texto.upper(), fg_color='transparent', text_color=BLANCO, font=(FUENTE, 11, 'bold'))
+                    lbl.pack(expand=True, padx=8, pady=2)
+
+                    widget_celda = (lbl, True)
+                else:
+                    lbl = ctk.CTkLabel(frame, text=texto, anchor='center', width=140, height=28, fg_color=bg, text_color=fg, font=font)
+                    lbl.grid(row=f*2, column=c, sticky='nsew', padx=1, pady=1)
+                    widget_celda = (lbl, False)
+            
+                frame.grid_columnconfigure(c, weight=1)
+
+            # Borde encabezado
+                if f == 0:
+                    borde = ctk.CTkFrame(master=frame, fg_color=GRIS)
+                    borde.grid(row=f*2+1, column=c, sticky='ew')
+                    borde.grid_propagate(False)
+                    borde.configure(height=2)
+
+                fila_widgets.append(widget_celda)
+            self.celdas_walkin.append(fila_widgets)
 
     def buscar_habitaciones_gui(self):
         f_entrada_str = self.w_fecha_entrada.get()
@@ -394,7 +512,8 @@ class FrontDeskApp(ctk.CTkFrame):
         except Exception as e:
             messagebox.showerror("Error de DB", f"No se pudo registrar el Walk-in. Error: {e}")
 
-    # ---------------- Check-out ----------------
+    
+        # ---------------- Check-out ----------------
     def crear_checkout(self):
         frame = ctk.CTkFrame(self.tab_checkout, fg_color=CLARO)
         frame.pack(pady=8, fill="both", expand=True)
@@ -461,32 +580,47 @@ class FrontDeskApp(ctk.CTkFrame):
         if not conn:
             messagebox.showerror("Error DB", "No se pudo conectar a la base de datos.")
             return
-        hoy = date.today().isoformat()
+
         cur = conn.cursor()
         try:
+            # Consulta para las reservas en estado "checked-in"
             cur.execute("""
                 SELECT r.id, c.nombres || ' ' || c.apellidos as cliente_nombre, r.numero_hab,
-                       r.fecha_entrada, r.fecha_salida, r.monto_pago, r.estado
+                    r.fecha_entrada, r.fecha_salida, r.monto_pago, r.estado
                 FROM reservas r
                 JOIN clientes c ON r.id_cliente = c.id
-                WHERE r.estado='checked-in' AND r.fecha_salida <= ?
-            """, (hoy,))
-            resultados = [dict(row) for row in cur.fetchall()]
+                WHERE r.estado='checked-in'
+            """)
+            reservas = [dict(row) for row in cur.fetchall()]
+
+            # Consulta para los Walk-ins en estado "checked-in"
+            cur.execute("""
+                SELECT w.id, w.cliente_nombre, w.numero_hab,
+                    w.fecha_entrada, w.fecha_salida, w.estado
+                FROM walk_ins w
+                WHERE w.checked_in=1 AND w.checked_out=0
+            """)
+            walkins = [dict(row) for row in cur.fetchall()]
+
+            # Combinar resultados
+            resultados = reservas + walkins
+
             if not resultados:
-                messagebox.showinfo("Sin resultados", "No hay reservas en estado 'checked-in' con fecha de salida hoy o anterior.")
+                messagebox.showinfo("Sin resultados", "No hay registros activos para Check-out.")
         except Exception as e:
-            messagebox.showerror("Error de Base de Datos", f"Error al cargar check-outs: {e}")
+            messagebox.showerror("Error de Base de Datos", f"Error al cargar Check-outs: {e}")
             resultados = []
         finally:
             conn.close()
 
+        # Mostrar resultados en la interfaz
         headers = {
             'id': 'ID', 'cliente_nombre': 'Cliente', 'numero_hab': 'Hab.',
             'fecha_entrada': 'Entrada', 'fecha_salida': 'Salida',
             'monto_pago': 'Monto', 'estado': 'Estado'
         }
         self._update_results_grid(self.co_resultados, resultados, headers, 'checkout')
-
+                
     def abrir_modal_cargos_adicionales(self):
         if not self.selected_checkout:
             messagebox.showwarning("Aviso", "Seleccione una reserva en Check-out para agregar cargos.")
@@ -508,13 +642,15 @@ class FrontDeskApp(ctk.CTkFrame):
 
     def extender_estadia_gui(self):
         if not self.selected_checkout:
-            messagebox.showwarning("Aviso","Seleccione una reserva.")
+            messagebox.showwarning("Aviso", "Seleccione una reserva.")
             return
+
         reserva_id = self.selected_checkout['id']
         nueva_salida_str = self.co_nueva_salida.get().strip()
         fecha_actual_salida_str = self.selected_checkout['fecha_salida']
         nueva_salida = validar_fecha(nueva_salida_str)
         fecha_actual_salida = validar_fecha(fecha_actual_salida_str)
+
         if not nueva_salida:
             messagebox.showerror("Error de Fecha", "Formato de fecha de salida inválido (YYYY-MM-DD).")
             return
@@ -524,14 +660,27 @@ class FrontDeskApp(ctk.CTkFrame):
         if nueva_salida <= fecha_actual_salida:
             messagebox.showerror("Error de Extensión", "La nueva fecha de salida debe ser posterior a la actual.")
             return
+
+        conn = None
         try:
-            extender_estadia(reserva_id, nueva_salida_str)
-            messagebox.showinfo("Éxito","Estadía extendida con éxito.")
+            conn = conectar_db()
+            if not conn:
+                raise Exception("No se pudo conectar a la base de datos.")
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE reservas
+                SET fecha_salida = ?
+                WHERE id = ?
+            """, (nueva_salida_str, reserva_id))
+            conn.commit()
+            messagebox.showinfo("Éxito", "Estadía extendida con éxito.")
             self.cargar_checkouts()
             self.selected_checkout = None
         except Exception as e:
             messagebox.showerror("Error de DB", f"No se pudo extender la estadía. Error: {e}")
-
+        finally:
+            if conn:
+                conn.close()
     def confirmar_checkout_gui(self):
         if not self.selected_checkout:
             messagebox.showwarning("Aviso","Seleccione una reserva.")
@@ -562,18 +711,28 @@ class FrontDeskApp(ctk.CTkFrame):
         if not self.selected_checkout:
             messagebox.showwarning("Aviso", "Seleccione una reserva.")
             return
+
+        # Validar el estado de la reserva
+        estado_reserva = self.selected_checkout['estado']
+        if estado_reserva != "checked-in":
+            messagebox.showwarning("Aviso", f"No se puede realizar Late Check-Out para reservas en estado: {estado_reserva}.")
+            return
+
         numero_hab = self.selected_checkout['numero_hab']
         conn = conectar_db()
         if not conn:
             messagebox.showerror("Error DB", "No se pudo conectar a la base de datos.")
             return
+
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) as cnt FROM reservas WHERE numero_hab=? AND fecha_entrada > ?", (numero_hab, date.today().isoformat()))
         r = cur.fetchone()
         conn.close()
+
         if r and r['cnt'] > 0:
-            messagebox.showerror("No disponible", "La habitación está reservada después; no se puede late check-out.")
+            messagebox.showerror("No disponible", "La habitación está reservada después; no se puede realizar Late Check-Out.")
             return
+
         try:
             monto_cargo = float(self.late_cargo.get())
             if monto_cargo <= 0:
@@ -581,8 +740,10 @@ class FrontDeskApp(ctk.CTkFrame):
         except Exception:
             messagebox.showerror("Error", "El cargo por Late Check-Out debe ser un número positivo.")
             return
+
         if not messagebox.askyesno("Late Check-Out", f"Reserva ID: {self.selected_checkout['id']}\nHabitación: {numero_hab}\nCargo: ${monto_cargo:,.2f}\n¿Confirmar?"):
             return
+
         try:
             registrar_late_checkout(self.selected_checkout['id'], monto_cargo)
             messagebox.showinfo("Éxito", "Late Check-Out registrado y cobrado.")
@@ -613,14 +774,14 @@ class FrontDeskApp(ctk.CTkFrame):
         ModalEarlyCheckout(self.master, reserva_id, fecha_salida_programada, self._callback_early_checkout)
 
     def _callback_early_checkout(self, reserva_id, motivo_salida):
-        conn = None # Initialize conn to None
+        conn = None
         try:
             conn = conectar_db()
             if not conn:
                 raise Exception("No se pudo conectar a la base de datos.")
             cur = conn.cursor()
             
-            # Get reservation details
+        # Obtener detalles de la reserva
             cur.execute("SELECT fecha_entrada, fecha_salida, monto_pago, numero_hab FROM reservas WHERE id=?", (reserva_id,))
             reserva_data = cur.fetchone()
             
@@ -639,7 +800,7 @@ class FrontDeskApp(ctk.CTkFrame):
             dias_restantes = (fecha_salida_programada - date.today()).days
 
             if dias_totales <= 0:
-                precio_noche = 0 # Avoid division by zero if reservation is for 0 or negative days
+                precio_noche = 0  # Evitar división por cero si la reserva tiene 0 o días negativos
             else:
                 precio_noche = monto_total_reserva / dias_totales
 
@@ -647,12 +808,12 @@ class FrontDeskApp(ctk.CTkFrame):
             if dias_restantes > 0:
                 penalizacion = round(precio_noche * dias_restantes * EARLY_CHECKOUT_PENALTY_PERCENT, 2)
 
-            # Update reservation status and room status
+            # Actualizar estado de la reserva y habitación
             cur.execute("UPDATE reservas SET estado='Completada', checked_out=1, notas=? WHERE id=?", (motivo_salida, reserva_id))
             cur.execute("UPDATE habitaciones SET estado='Sucia' WHERE numero=?", (numero_hab,))
             cur.execute("INSERT INTO checkins_checkouts (reserva_id, tipo, notas) VALUES (?, 'checkout_anticipado', ?)", (reserva_id, motivo_salida))
             
-            # Add penalty as an additional charge if applicable
+            # Registrar penalización como ingreso adicional
             if penalizacion > 0:
                 cur.execute("""
                     INSERT INTO ingresos (tipo_ingreso, concepto, monto, metodo_pago, notas)
@@ -670,8 +831,7 @@ class FrontDeskApp(ctk.CTkFrame):
         finally:
             if conn:
                 conn.close()
-
-# ==========================
+    # ==========================
 # ModalCargosAdicionales
 # ==========================
 class ModalCargosAdicionales(ctk.CTkToplevel):
@@ -832,6 +992,9 @@ class ModalCobro(ctk.CTkToplevel):
         self.tasa_entry.grid(row=3, column=1, sticky="ew")
         self.tasa_entry.bind("<KeyRelease>", self.actualizar_monto_equivalente)
 
+        # Label para la fuente de la tasa
+        self.tasa_fuente_label = ctk.CTkLabel(main_frame, text="Fuente: Manual", text_color=GRIS)
+        self.tasa_fuente_label.grid(row=3, column=2, padx=10, sticky="w")
         # --- Monto Equivalente ---
         ctk.CTkLabel(main_frame, text="Monto equivalente", text_color=OSCURO).grid(row=4, column=0, padx=(0, 10), pady=10, sticky="w")
         self.monto_equivalente_entry = ctk.CTkEntry(main_frame, state="readonly")
