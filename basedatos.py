@@ -1,5 +1,9 @@
 import sqlite3 as sql
 from datetime import date, datetime, timedelta
+import os
+import hashlib
+import binascii
+import hmac
 
 NOMBRE_BASEDATOS = 'base_datos.db'
 
@@ -11,6 +15,124 @@ def conectar_bd():
     except sql.Error as e:
         print(f'Error al conectarse a la base de datos: {e}')
         return None
+
+def _hash_password(password, salt_bytes=None):
+    if salt_bytes is None:
+        salt_bytes = os.urandom(16)
+    dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt_bytes, 150000)
+    return binascii.hexlify(salt_bytes).decode() + '$' + binascii.hexlify(dk).decode()
+
+def _verify_password(stored_hash, password):
+    try:
+        salt_hex, dk_hex = stored_hash.split('$', 1)
+        salt = binascii.unhexlify(salt_hex)
+        dk = binascii.unhexlify(dk_hex)
+        newdk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 150000)
+        return hmac.compare_digest(newdk, dk)
+    except Exception:
+        return False
+
+def crear_tablas_autenticacion():
+    conn = conectar_bd()
+    cur = conn.cursor()
+    # roles, users, user_roles
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS roles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT UNIQUE NOT NULL
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      nombre TEXT,
+      email TEXT
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS user_roles (
+      user_id INTEGER NOT NULL,
+      role_id INTEGER NOT NULL,
+      PRIMARY KEY (user_id, role_id),
+      FOREIGN KEY(user_id) REFERENCES users(id),
+      FOREIGN KEY(role_id) REFERENCES roles(id)
+    );
+    """)
+    conn.commit()
+    conn.close()
+
+def crear_rol(nombre):
+    conn = conectar_bd(); cur = conn.cursor()
+    try:
+        cur.execute("INSERT OR IGNORE INTO roles(nombre) VALUES(?)", (nombre,))
+        conn.commit()
+    finally:
+        conn.close()
+
+def obtener_roles_usuario(user_id):
+    conn = conectar_bd(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT r.nombre FROM roles r
+            JOIN user_roles ur ON ur.role_id = r.id
+            WHERE ur.user_id = ?
+        """, (user_id,))
+        return [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+def crear_usuario(username, password, nombre=None, email=None, roles=None):
+    conn = conectar_bd(); cur = conn.cursor()
+    try:
+        pw_hash = _hash_password(password)
+        cur.execute("INSERT INTO users(username,password_hash,nombre,email) VALUES(?,?,?,?)",
+                    (username, pw_hash, nombre, email))
+        uid = cur.lastrowid
+        if roles:
+            for r in roles:
+                cur.execute("SELECT id FROM roles WHERE nombre = ?", (r,))
+                row = cur.fetchone()
+                if not row:
+                    cur.execute("INSERT INTO roles(nombre) VALUES(?)", (r,))
+                    role_id = cur.lastrowid
+                else:
+                    role_id = row[0]
+                cur.execute("INSERT OR IGNORE INTO user_roles(user_id, role_id) VALUES(?,?)", (uid, role_id))
+        conn.commit()
+        return True, uid
+    except sql.IntegrityError as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+def autenticar_usuario(username, password):
+    conn = conectar_bd(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, username, password_hash, nombre, email FROM users WHERE username = ?", (username,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        if _verify_password(row["password_hash"], password):
+            cur.execute("""
+                SELECT r.nombre FROM roles r
+                JOIN user_roles ur ON ur.role_id = r.id
+                WHERE ur.user_id = ?
+            """, (row["id"],))
+            roles = [r[0] for r in cur.fetchall()]
+            return {"id": row["id"], "username": row["username"], "nombre": row["nombre"], "email": row["email"], "roles": roles}
+        return None
+    finally:
+        conn.close()
+
+def usuario_existe(username):
+    conn = conectar_bd(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT 1 FROM users WHERE username = ?", (username,))
+        return cur.fetchone() is not None
+    finally:
+        conn.close()
 
 def verificar_tablas():
     conn = conectar_bd()

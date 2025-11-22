@@ -1,0 +1,18 @@
+-creados
+user: admin, pass: admin, rol: admin
+user: prueba1, pass: prueba1, rol: manager
+
+-no creados
+user: prueba2, pass: prueba2, rol: frontdesk
+user: prueba3, pass: prueba3, rol: housekeeping
+user: prueba4, pass, prueba4, rol: mantenimiento
+
+-permisos de los modulos segun rol
+'dashboard': set(),  # abierto a todos logueados
+            'clientes': {'admin','manager','frontdesk'},
+            'habitaciones': {'admin','manager','mantenimiento'},
+            'reservas': {'admin','frontdesk','manager'},
+            'logistica': {'admin','manager'},
+            'buffet': {'admin', 'manager'},
+            'front': {'admin','frontdesk'},
+            'eventos': {'admin','manager'},
